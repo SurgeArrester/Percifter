@@ -91,10 +91,10 @@ class Niggli():
             nl['B'], nl['C'] = nl['C'], nl['B']
             nl['eta'], nl['zeta'] = nl['zeta'], nl['eta']
 
-            return false
+            return False
 
         else:
-            return true
+            return True
 
     def step_3(self):
         nl = self.niggli_lattice
@@ -126,10 +126,10 @@ class Niggli():
             nl['eta'] = nl['eta'] * copysign(1, nl['xi'])
             nl['xi'] = nl['xi'] - 2 * nl['B'] * copysign(1, nl['xi'])
 
-            return false
+            return False
 
         else:
-            return true
+            return True
 
     def step_6(self):
         nl = self.niggli_lattice
@@ -144,10 +144,10 @@ class Niggli():
             nl['xi'] = nl['xi'] - nl['zeta'] * copysign(1, nl['eta'])
             nl['eta'] = nl['eta'] - 2 * nl['A'] * copysign(1, nl['eta'])
 
-            return false
+            return False
 
         else:
-            return true
+            return True
 
     def step_7(self):
         nl = self.niggli_lattice
@@ -162,10 +162,10 @@ class Niggli():
             nl['xi'] = nl['xi'] - nl['eta'] * copysign(1, nl['zeta'])
             nl['zeta'] = nl['zeta'] - 2 * nl['A'] * copysign(1, nl['zeta'])
 
-            return false
+            return False
 
         else:
-            return true
+            return True
 
     def step_8(self):
         nl = self.niggli_lattice
@@ -178,10 +178,10 @@ class Niggli():
             nl['xi'] = 2 * nl['B'] + nl['xi'] + nl['zeta']
             nl['eta'] = 2 * nl['A'] + nl['eta'] + nl['zeta']
 
-            return false
+            return False
 
         else:
-            return true
+            return True
 
     def norm_niggli(self):
         nl = self.niggli_lattice
