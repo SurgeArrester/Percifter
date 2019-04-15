@@ -18,7 +18,7 @@ import numpy as np
 import pickle as pk
 import CifFile
 
-from ripser import ripser, plot_dgms
+from ripser import ripser
 import cechmate as cm
 
 from diffpy.structure import loadStructure
