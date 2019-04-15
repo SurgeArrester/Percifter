@@ -117,9 +117,9 @@ class Niggli():
         nl = self.niggli_lattice
 
         if( abs(nl['xi']) > nl['B'] + self.epsilon
-            or not abs(nl['B'] - nl['xi']) > epsilon
+            or not abs(nl['B'] - nl['xi']) > self.epsilon
             and 2 * nl['eta'] < nl['zeta'] - self.epsilon
-            or not abs(nl['B'] + nl['xi']) > epsilon
+            or not abs(nl['B'] + nl['xi']) > self.epsilon
             and nl['zeta'] < -self.epsilon):
 
             nl['C'] = nl['B'] + nl['C'] - nl['xi'] * copysign(1, nl['xi'])
