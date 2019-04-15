@@ -104,7 +104,7 @@ class CifToPers():
         lattice['gamma'] = cif[namespace]['_cell_angle_gamma']
         return lattice
 
-    def reduce_niggli(self, lattice, epsilon):
+    def reduce_niggli(self, lattice):
         '''
         Take the original six lattice parameters and follow Grubers algorithm
         to generate the Niggli cell
