@@ -25,7 +25,7 @@ from diffpy.structure import loadStructure
 from diffpy.structure.expansion.supercell_mod import supercell
 from sklearn.metrics.pairwise import euclidean_distances
 
-from Niggli import Niggli
+from Percifter.Niggli import Niggli
 
 # Ripser throws a lot of annoying warnings!
 import warnings

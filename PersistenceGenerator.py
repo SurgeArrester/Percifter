@@ -36,8 +36,8 @@ import numpy as np
 
 from mpi4py import MPI
 
-from ElementIsolator import ElementIsolator
-from CifToPers import CifToPers
+from Percifter.ElementIsolator import ElementIsolator
+from Percifter.CifToPers import CifToPers
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Recursively search through a folder and take the persistence of each cif file by first isolating each element, calculating the persistence of these, then writing these to file as a pickled object')
