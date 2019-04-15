@@ -22,9 +22,9 @@ class Niggli():
     def initialise_niggli(self, lattice):
         niggli_lattice = {}
 
-        niggli_lattice['A'] = pow(float(lattice['a']), 2)
-        niggli_lattice['B'] = pow(float(lattice['b']), 2)
-        niggli_lattice['C'] = pow(float(lattice['c']), 2)
+        niggli_lattice['A'] = pow(lattice['a'], 2)
+        niggli_lattice['B'] = pow(lattice['b'], 2)
+        niggli_lattice['C'] = pow(lattice['c'], 2)
 
         niggli_lattice['xi'] = 2 * lattice['b'] * lattice['c'] * cos(radians(lattice['alpha']))
         niggli_lattice['eta'] = 2 * lattice['a'] * lattice['c'] * cos(radians(lattice['beta']))

@@ -96,12 +96,12 @@ class CifToPers():
         Simply return lattice parameters from the cif file as a dict
         '''
         lattice = {}
-        lattice['a'] = cif[namespace]['_cell_length_a']
-        lattice['b'] = cif[namespace]['_cell_length_b']
-        lattice['c'] = cif[namespace]['_cell_length_c']
-        lattice['alpha'] = cif[namespace]['_cell_angle_alpha']
-        lattice['beta'] = cif[namespace]['_cell_angle_beta']
-        lattice['gamma'] = cif[namespace]['_cell_angle_gamma']
+        lattice['a'] = float(cif[namespace]['_cell_length_a'])
+        lattice['b'] = float(cif[namespace]['_cell_length_b'])
+        lattice['c'] = float(cif[namespace]['_cell_length_c'])
+        lattice['alpha'] = float(cif[namespace]['_cell_angle_alpha'])
+        lattice['beta'] = float(cif[namespace]['_cell_angle_beta'])
+        lattice['gamma'] = float(cif[namespace]['_cell_angle_gamma'])
         return lattice
 
     def reduce_niggli(self, lattice):
