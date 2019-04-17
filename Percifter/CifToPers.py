@@ -135,7 +135,9 @@ class CifToPers():
     def generate_persistence(self, xyz_coords):
         '''
         Apply the given filtration/complex (default alpha) and return the
-        persistence diagrams of each. Default to first homology group only
+        persistence diagrams of each. Default to first homology group only. Currently
+        using three different libraries
+        TODO: Cleanup, maybe all use gudhi?
         '''
         if self.complex == 'alpha':
             alpha_complex = gd.AlphaComplex(points=xyz_coords)
@@ -148,10 +150,6 @@ class CifToPers():
             for i in range(dimensions):
                 dim_points = [np.array(x) for (y, (x)) in persistence if y == i]
                 pers.append(np.vstack(dim_points))
-            print(pers[i])
-
-            plot_dgms(pers)
-            plt.show()
             return pers
 
         elif self.complex == 'cech':
@@ -161,7 +159,7 @@ class CifToPers():
 
         elif self.complex == 'rips':
             pers = ripser(xyz_coords, maxdim=1)
-            return pers['dgms'] # return cocycles, persistence points and distance matrix of coordinates
+            return pers['dgms'] # return diagram
 
     def new_persistence(self, expansion_factor):
         '''
