@@ -160,13 +160,13 @@ class CifToPers():
         # pers = self.reduce_persistence(pers, self.DECIMAL_ROUNDING)
         return pers, expanded_coords
 
-    def increment_expanion(self, i, xyz):
+    def increment_expanion(self, dim, xyz):
         '''
         Keep incrementing through the dimension in the expansion factor until
         incrementing no longer increases the number of persistence points
         '''
         while True:
-            xyz[i] += 1 # Increment our expansion factor
+            xyz[dim] += 1 # Increment our expansion factor for dimension dim
             new_pers, new_coords = self.new_persistence((xyz))
             if len(new_pers) > len(self.pers): # If there's a new homology dimension update
                 self.pers, self.expanded_coords = new_pers, new_coords
