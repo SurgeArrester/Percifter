@@ -16,20 +16,23 @@ from collections import Counter
 
 import numpy as np
 import pickle as pk
+import matplotlib.pyplot as plt
+
 import CifFile
 
-from ripser import ripser
+from ripser import ripser, plot_dgms
 import cechmate as cm
+import gudhi as gd
 
 from diffpy.structure import loadStructure
 from diffpy.structure.expansion.supercell_mod import supercell
 from sklearn.metrics.pairwise import euclidean_distances
 
-from Percifter.Niggli import Niggli
+from Niggli import Niggli
 
 # Ripser throws a lot of annoying warnings!
 import warnings
-warnings.filterwarnings("ignore")
+#warnings.filterwarnings("ignore")
 
 class CifToPers():
     def __init__(self, input_path = None,
@@ -89,22 +92,22 @@ class CifToPers():
             with open("/home/cameron/Datasets/ICSD/MineralClass/failed_cif", "a+") as myfile:
                 myfile.write(f"{self.filename} failed because of {e}\n")
                 myfile.close()
-            print("Failed cif file, check the formatting against others or get in touch with C.J.Hargreaves@Liverpool.ac.uk")
+            print(f"Failed cif file, check the formatting against others or get in touch with C.J.Hargreaves@Liverpool.ac.uk\n{e}")
 
     def generate_lattice(self, cif, namespace):
         '''
         Simply return lattice parameters from the cif file as a dict
         '''
         lattice = {}
-        lattice['a'] = float(cif[namespace]['_cell_length_a'])
-        lattice['b'] = float(cif[namespace]['_cell_length_b'])
-        lattice['c'] = float(cif[namespace]['_cell_length_c'])
-        lattice['alpha'] = float(cif[namespace]['_cell_angle_alpha'])
-        lattice['beta'] = float(cif[namespace]['_cell_angle_beta'])
-        lattice['gamma'] = float(cif[namespace]['_cell_angle_gamma'])
+        lattice['a'] = cif[namespace]['_cell_length_a']
+        lattice['b'] = cif[namespace]['_cell_length_b']
+        lattice['c'] = cif[namespace]['_cell_length_c']
+        lattice['alpha'] = cif[namespace]['_cell_angle_alpha']
+        lattice['beta'] = cif[namespace]['_cell_angle_beta']
+        lattice['gamma'] = cif[namespace]['_cell_angle_gamma']
         return lattice
 
-    def reduce_niggli(self, lattice):
+    def reduce_niggli(self, lattice, epsilon):
         '''
         Take the original six lattice parameters and follow Grubers algorithm
         to generate the Niggli cell
@@ -135,9 +138,21 @@ class CifToPers():
         persistence diagrams of each. Default to first homology group only
         '''
         if self.complex == 'alpha':
-            alpha = cm.Alpha()
-            filtration = alpha.build(xyz_coords)
-            return alpha.diagrams(filtration)
+            alpha_complex = gd.AlphaComplex(points=xyz_coords)
+            simplex_tree = alpha_complex.create_simplex_tree(max_alpha_square=60.0) # Essentially a delaunay triangulation
+            persistence = simplex_tree.persistence()
+
+            # Convert this long list into a k-dimensional array for each dimension
+            dimensions = max([x for (x, (y)) in persistence])
+            pers = []
+            for i in range(dimensions):
+                dim_points = [np.array(x) for (y, (x)) in persistence if y == i]
+                pers.append(np.vstack(dim_points))
+            print(pers[i])
+
+            plot_dgms(pers)
+            plt.show()
+            return pers
 
         elif self.complex == 'cech':
             cech = cm.Cech(max_dim=1)
@@ -160,13 +175,13 @@ class CifToPers():
         # pers = self.reduce_persistence(pers, self.DECIMAL_ROUNDING)
         return pers, expanded_coords
 
-    def increment_expanion(self, dim, xyz):
+    def increment_expanion(self, i, xyz):
         '''
         Keep incrementing through the dimension in the expansion factor until
         incrementing no longer increases the number of persistence points
         '''
         while True:
-            xyz[dim] += 1 # Increment our expansion factor for dimension dim
+            xyz[i] += 1 # Increment our expansion factor
             new_pers, new_coords = self.new_persistence((xyz))
             if len(new_pers) > len(self.pers): # If there's a new homology dimension update
                 self.pers, self.expanded_coords = new_pers, new_coords
@@ -194,8 +209,8 @@ class CifToPers():
         self.xyz_expansion = xyz
         print(self.filename)
         print("XYZ Expansion factor is: {}".format(xyz))
-        for i in range(len(self.pers['dgms'])):
-            print("Homology dimension {} has unique points: {}".format(i, np.unique(self.pers['dgms'][i]))) # just the unique points
+        for i in range(len(self.pers)):
+            print(f"Homology dimension {i} has unique points: {np.unique(self.pers[i])}") # just the unique points
 
     def write_to_file(self, pers, output_path, reduction):
         '''
@@ -204,14 +219,13 @@ class CifToPers():
         '''
         try:
             if reduction:
-                dgms = pers['dgms']
-                for i in range(len(dgms)):
-                    x = map(tuple, dgms[i]) # np array is unhashable so must first be cast to a list
-                    dgms[i] = Counter(x) # Use each coordinate as a key in a dictionary and then count occurences
-                pk.dump(dgms, open(output_path, "wb" ) )
+                for i in range(len(pers)):
+                    x = map(tuple, pers[i]) # np array is unhashable so must first be cast to a list
+                    pers[i] = Counter(x) # Use each coordinate as a key in a dictionary and then count occurences
+                pk.dump(pers, open(output_path, "wb" ) )
 
             else:
-                pk.dump(pers['dgms'], open(output_path, "wb" ) )
+                pk.dump(pers, open(output_path, "wb" ) )
 
         except Exception as e:
             print(f"{self.filename} errored because of {e}")
@@ -241,13 +255,13 @@ class CifToPers():
         return frequency_map # A dictionary of counts
 
 if __name__ == '__main__':
-    input_folder = '/home/cameron/Documents/tmp/icsd_977903/'
+    input_path = '/home/cameron/Documents/tmp/icsd_977903/icsd_977903_Fe.cif'
     test_folder = '/home/cameron/Documents/tmp/icsd_977903/'
-    out_path = '/home/cameron/Documents/tmp/icsd_977903/'
-    x = CifToPers(test_folder + "icsd_977903_Fe.cif", out_path)
-    for filename in os.listdir(input_folder):
-        print(filename)
-        x = CifToPers(input_folder + filename, out_path)
+    out_path = '/home/cameron/Documents/tmp/icsd_977903/icsd_977903_Fe.pers'
+    # x = CifToPers(test_folder + "icsd_977903_Fe.cif", out_path)
+    # for filename in os.listdir(input_folder):
+    #     print(filename)
+    x = CifToPers(input_path, out_path)
     # for i in range(1,12):
     #     print("Li" + str(i) + ".cif")
     #     x = CifToPers(test_folder + "Li" + str(i) + ".cif", out_path)
