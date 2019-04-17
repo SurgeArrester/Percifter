@@ -19,6 +19,7 @@ class PersToPim():
                        output_path = None,
                        input_type = "pickle",
                        filename = None,
+                       dim_split = False,
                        specs=False,
                        spread=1,
                        pixels=[64, 64],
@@ -34,12 +35,20 @@ class PersToPim():
                         spread=spread,
                         pixels=pixels,
                         verbose=verbose)
+        if dim_split:
+            for i, diagram in enumerate(diagrams):
+                # Update filename for each dimension
+                filename = filename + "_dim_" + str(i) + ".pim"
 
-        for i, diagram in enumerate(diagrams):
-            # Update filename for each dimension
-            filename = filename + "_H" + str(i) + ".pim"
+                # Remove all infinite values, transform and dump
+                diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
+                img = pim.transform(diagram[i])
+                pk.dump(img, open(output_path + filename, "wb"))
+        else:
+            filename = filename + ".pim"
+            # Remove all infinite values
+            for i, diagram in enumerate(diagrams):
+                diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
 
-            # Remove all infinite values, transform and dump
-            diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
             img = pim.transform(diagram[i])
             pk.dump(img, open(output_path + filename, "wb"))
