@@ -14,7 +14,7 @@ On my system this ate through memory (20GB) very quickly leading to kernel panic
 get around this I spawn a new process and kill it if it takes more than 10 seconds
 to process persistence, then I come back to these and do them unthreaded
 
-mpiexec -n 4 python PersistenceGenerator.py -r -i '/home/cameron/Datasets/ICSD/MineralClass/IsolatedCif' -o '/home/cameron/Datasets/ICSD/MineralClass/MineralPers'
+mpiexec -n 4 python PersistenceGenerator.py -r -i '/home/cameron/Datasets/ICSD/MineralClass/InputCifFolder/' -o '/home/cameron/Datasets/ICSD/MineralClass/MineralPers/'
 
 Generator takes input path and output path as arguments
 

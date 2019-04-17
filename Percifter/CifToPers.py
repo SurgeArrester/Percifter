@@ -67,8 +67,8 @@ class CifToPers():
         namespace = list(self.cif.keys())[0]
         self.keys = list(self.cif[namespace].keys())
 
-        self.lattice = self.generate_lattice(self.cif, namespace)
-        self.niggli_lattice = self.reduce_niggli(self.lattice)
+        # self.lattice = self.generate_lattice(self.cif, namespace)
+        # self.niggli_lattice = self.reduce_niggli(self.lattice)
 
         try:
             self.diffpy_molecule = loadStructure(input_path)
