@@ -29,7 +29,7 @@ class PersToPim():
             base = os.path.basename(input_path)
             filename = os.path.splitext(base)[0]
 
-        diagrams = pk.load(input_path, "rb")
+        diagrams = pk.load(open(input_path, "rb"))
 
         pim = PersImage(specs=specs,
                         spread=spread,
@@ -41,7 +41,7 @@ class PersToPim():
                 filename = filename + "_dim_" + str(i) + ".pim"
 
                 # Remove all infinite values, transform and dump
-                diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
+                diagrams[i] = diagram[~np.isinf(diagram).any(axis=1)]
                 self.img = pim.transform(diagram[i])
                 if output_path:
                     pk.dump(self.img, open(output_path + filename, "wb"))
@@ -50,7 +50,7 @@ class PersToPim():
             filename = filename + ".pim"
             # Remove all infinite values
             for i, diagram in enumerate(diagrams):
-                diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
+                diagrams[i] = diagram[~np.isinf(diagram).any(axis=1)]
 
             self.img = pim.transform(diagram)
             if output_path:
