@@ -50,5 +50,5 @@ class PersToPim():
             for i, diagram in enumerate(diagrams):
                 diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
 
-            img = pim.transform(diagram[i])
+            img = pim.transform(diagram)
             pk.dump(img, open(output_path + filename, "wb"))
