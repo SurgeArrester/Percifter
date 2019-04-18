@@ -43,7 +43,9 @@ class PersToPim():
                 # Remove all infinite values, transform and dump
                 diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
                 img = pim.transform(diagram[i])
-                pk.dump(img, open(output_path + filename, "wb"))
+                if output_path:
+                    pk.dump(img, open(output_path + filename, "wb"))
+
         else:
             filename = filename + ".pim"
             # Remove all infinite values
@@ -51,4 +53,5 @@ class PersToPim():
                 diagram[i] = diagram[~np.isinf(diagram[i]).any(axis=1)]
 
             img = pim.transform(diagram)
-            pk.dump(img, open(output_path + filename, "wb"))
+            if output_path:
+                pk.dump(img, open(output_path + filename, "wb"))
