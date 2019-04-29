@@ -226,7 +226,7 @@ class CifToPers():
                 pk.dump(pers, open(output_path, "wb" ) )
 
         except Exception as e:
-            print(f"{self.filename} errored because of {e}")
+            print(f"{self.filename} failed to write to file in CifToPers.py because of {e}")
 
     def reduce_persistence(self, pers, decimal_places):
         '''
