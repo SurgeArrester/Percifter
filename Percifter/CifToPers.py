@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 import CifFile
 
-from ripser import ripser, plot_dgms
+from ripser import ripser
 import cechmate as cm
 import gudhi as gd
 
