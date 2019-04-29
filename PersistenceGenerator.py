@@ -120,12 +120,12 @@ if __name__ == '__main__':
         if os.path.isdir(input_path):    # if it is actually a folder
             my_filepaths = get_paths(input_path)
             # Remove below lines, for testing only
-            processed_paths = os.listdir('/home/cameron/Datasets/ICSD/MineralClass/MineralPers')
-            print(my_filepaths[0])
-            print(processed_paths[0])
-            print(len(my_filepaths))
+            # processed_paths = os.listdir('/home/cameron/Datasets/ICSD/MineralClass/MineralPers')
+            # print(my_filepaths[0])
+            # print(processed_paths[0])
+            # print(len(my_filepaths))
             my_filepaths = [x for x in my_filepaths if x not in processed_paths]
-            print(len(my_filepaths))
+            # print(len(my_filepaths))
 
             my_files_processed = 0
             my_file_count = len(my_filepaths)
