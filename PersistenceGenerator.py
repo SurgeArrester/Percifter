@@ -184,8 +184,8 @@ if __name__ == '__main__':
             icsd_code = input_path.split('/')[-2]
             filename = filename[:-4] + ".pers"
 
-            output_folder = '/home/cameron/Datasets/ICSD/MineralClass/MineralPers/'
-            pers_output_path = os.path.join(output_folder, icsd_code, filename)
+
+            pers_output_path = os.path.join(output_path, icsd_code, filename)
 
             print(f"Processing {input_path}")
             process_cif(input_path, pers_output_path, args['timeout'],
