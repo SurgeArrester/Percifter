@@ -70,7 +70,7 @@ class PersToPim():
         else:
             self.filename = self.filename + ".pim"
 
-            self.img = pim.transform(diagram)
+            self.img = pim.transform(diagrams)
             if output_path:
                 if not os.path.isdir(output_path):
                     os.makedirs(output_path)
