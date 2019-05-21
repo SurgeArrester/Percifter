@@ -39,6 +39,9 @@ from mpi4py import MPI
 from Percifter.ElementIsolator import ElementIsolator
 from Percifter.CifToPers import CifToPers
 
+def main():
+    print()
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Recursively search through a folder and take the persistence of each cif file by first isolating each element, calculating the persistence of these, then writing these to file as a pickled object')
     parser.add_argument('-i', '--inputpath', default='./', help='The folder/file to process')
@@ -119,13 +122,6 @@ if __name__ == '__main__':
 
         if os.path.isdir(input_path):    # if it is actually a folder
             my_filepaths = get_paths(input_path)
-            # Remove below lines, for testing only
-            # processed_paths = os.listdir('/home/cameron/Datasets/ICSD/MineralClass/MineralPers')
-            # print(my_filepaths[0])
-            # print(processed_paths[0])
-            # print(len(my_filepaths))
-            my_filepaths = [x for x in my_filepaths if x not in processed_paths]
-            # print(len(my_filepaths))
 
             my_files_processed = 0
             my_file_count = len(my_filepaths)
@@ -135,7 +131,7 @@ if __name__ == '__main__':
                 # If these have been pre-split into isolated cifs then take the
                 # folder, else take the cif file and split into cifs
                 process_path = os.path.join(input_path, item)
-
+                print(process_path)
                 icsd_code = item if item[-4:] != '.cif' else item[:-4]
                 this_out_dir = os.path.join(output_path, icsd_code)
 
@@ -143,6 +139,7 @@ if __name__ == '__main__':
                     os.makedirs(this_out_dir)
 
                 if os.path.isdir(process_path):
+                    print("Is a dir")
                     # Here we assume that this is a directory of isolated cifs
                     for cif in os.listdir(process_path):
                         cif_path = os.path.join(process_path, cif)
@@ -154,18 +151,41 @@ if __name__ == '__main__':
                         process_cif(cif_path, pers_output_path, args['timeout'])
 
                 else:
+                    print(f"Currently processing: {process_path}")
                     # Here we assume that the given path points to a cif file
                     isolated_cifs = ElementIsolator(process_path)
-                    elements = isolated_cifs.elements
-                    for i, cif in enumerate(isolated_cifs.isolated_cifs):
-                        filename = icsd_code + "_" + elements[i].group() + '.pers'
-                        pers_output_path = os.path.join(output_path, filename)
+                    print("Isolation complete")
+                    print(str(isolated_cifs.isolated_cifs))
+                    input()
+                    if hasattr(isolated_cifs, "elements"):
+                        print("Has attribute elements")
+                        input()
+                        elements = isolated_cifs.elements
+                        for i, cif in enumerate(isolated_cifs.isolated_cifs):
+                            filename = icsd_code + "_" + elements[i].group() + '.pers'
+                            pers_output_path = os.path.join(output_path, filename)
 
                         with tempfile.NamedTemporaryFile(mode="w+t") as tmp:
                             tmp.write(str(cif) + "\n")
                             tmp.flush()
                             process_cif(tmp.name, pers_output_path,
                                         args['timeout'], filename=filename)
+
+                    else:
+                        print("Isolating anions")
+                        for i, cif in enumerate(isolated_cifs.isolated_cifs):
+                            print(str(isolated_cifs.isolated_cifs[i]))
+                            filename = icsd_code + "_" + "anion" + '.pers'
+                            print("No error so far")
+                            input()
+                            pers_output_path = os.path.join(output_path, filename)
+
+                        with tempfile.NamedTemporaryFile(mode="w+t") as tmp:
+                            tmp.write(str(cif) + "\n")
+                            tmp.flush()
+                            process_cif(tmp.name, pers_output_path,
+                                        args['timeout'], filename=filename)
+                            input()
 
                 print(f"{icsd_code} processed")
 
@@ -185,13 +205,8 @@ if __name__ == '__main__':
             filename = filename[:-4] + ".pers"
 
 
-            pers_output_path = os.path.join(output_path, icsd_code, filename)
+            pers_output_path = os.path.join(output_path, filename)
 
             print(f"Processing {input_path}")
             process_cif(input_path, pers_output_path, args['timeout'],
                         filename=filename)
-
-
-    # else:
-    #     x = CifToPers(input_path, output_path)
-    #     print("Persistence file written with expansion {} and {} points".format(x.xyz_expansion, x.pers['num_edges']))
