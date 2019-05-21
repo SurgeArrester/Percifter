@@ -13,8 +13,8 @@ import pickle as pk
 
 def main():
     testpath = '/home/cameron/Datasets/ICSD/ICSD_2019_Li_CIFs/icsd_015473.cif'
-    output_path = '/home/cameron/Documents/tmp/icsd_015473/'
-    x = ElementIsolator(testpath, output_path)
+    output_path = '/home/cameron/Documents/tmp/'
+    x = IonIsolator(testpath, output_path)
 
 class IonIsolator():
     """
@@ -64,8 +64,8 @@ class IonIsolator():
                                                     self.namespace,
                                                     '_atom_site_aniso_type_symbol',
                                                     ions))
-            # isolated_cifs[i] = modified_cif
 
+        print(isolated_cifs)
         self.isolated_cifs = isolated_cifs
 
         if output_path:

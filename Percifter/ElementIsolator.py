@@ -56,10 +56,10 @@ class ElementIsolator():
             isolated_cifs[i] = modified_cif
 
         self.isolated_cifs = isolated_cifs
-        self.elements = elements
+        self.elements = [element.group() for element in elements]
 
         if output_path:
-            self.write_to_file(isolated_cifs, elements, output_path + self.icsd_code + "/")
+            self.write_to_file(isolated_cifs, self.elements, output_path + self.icsd_code + "/")
 
 
     def deleteAndUpdateLoop(self, cif, namespace, loopLabel, searchTerm):
@@ -99,7 +99,7 @@ class ElementIsolator():
         for i, element in enumerate(elements):
             print(element)
             if cifs[i] != -1:
-                filename = self.icsd_code + "_" + element.group() + ".cif"
+                filename = self.icsd_code + "_" + element + ".cif"
                 outfile = open(output_path + filename, "w")
                 outfile.write(cifs[i].WriteOut())
                 # x = cifs[i].WriteOut()

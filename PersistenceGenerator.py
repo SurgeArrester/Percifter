@@ -15,14 +15,16 @@ get around this I spawn a new process and kill it if it takes more than 10 secon
 to process persistence, then I come back to these and do them unthreaded
 
 mpiexec -n 4 python PersistenceGenerator.py -r -i '/home/cameron/Datasets/ICSD/MineralClass/InputCifFolder/' -o '/home/cameron/Datasets/ICSD/MineralClass/MineralPers/'
-
-Generator takes input path and output path as arguments
+mpiexec -n 1 python PersistenceGenerator.py -r -i '/home/cameron/Datasets/ICSD/test_files' -o '/home/cameron/Documents/tmp/PersGen' -s "elements"
 
 Options:
 -r  Recursively search through the folder and output to a folder
-
-TODO
-- Expand the single file manipulator to take in multi element cif files
+-i Select input folder/file
+-o select output folder
+-t Select timeout when processing persistence. Can be useful for very computationally heavy files
+-s splitting type, whether to split input cif into elements, ions, or no splitting at all
+-l log files folder, default /var/logs/PersGen.log
+TODO: Refactor, this code has become pretty messy with clumsy feature creep
 
 '''
 import argparse
@@ -37,6 +39,7 @@ import numpy as np
 from mpi4py import MPI
 
 from Percifter.ElementIsolator import ElementIsolator
+from Percifter.IonIsolator import IonIsolator
 from Percifter.CifToPers import CifToPers
 
 def parse_arguments():
@@ -45,6 +48,8 @@ def parse_arguments():
     parser.add_argument('-o', '--outputpath', default='./', help='The output path to write the file to')
     parser.add_argument('-r', '--recursive', action='store_true', help='Whether to recursively check folder')
     parser.add_argument('-t', '--timeout', default=1000, type=int, help='Length of time to process a single file before terminating process, should be increased for large files but may cause memory overflow if multiple large files are processed simultaneously')
+    parser.add_argument('-s', '--splitting', default='ion', type=str, help='How to split up the input cif file for separate persistence diagrams. Available: "ion", "element", "none"')
+    parser.add_argument('-l', '--logdir', default='/var/logs/PersGen.log', type=str, help="Where to save the logs for any files that may not have successfully processed")
     args = (vars(parser.parse_args()))
     return args
 
@@ -52,6 +57,7 @@ def get_paths(input_path):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank() # If using MPI
     num_processes = comm.size
+
     if rank == 0:                # First rank splits the files up
         filepaths = os.listdir(input_path)
         print("Building index...")
@@ -119,13 +125,6 @@ if __name__ == '__main__':
 
         if os.path.isdir(input_path):    # if it is actually a folder
             my_filepaths = get_paths(input_path)
-            # Remove below lines, for testing only
-            # processed_paths = os.listdir('/home/cameron/Datasets/ICSD/MineralClass/MineralPers')
-            # print(my_filepaths[0])
-            # print(processed_paths[0])
-            # print(len(my_filepaths))
-            my_filepaths = [x for x in my_filepaths if x not in processed_paths]
-            # print(len(my_filepaths))
 
             my_files_processed = 0
             my_file_count = len(my_filepaths)
@@ -142,24 +141,23 @@ if __name__ == '__main__':
                 if not os.path.exists(this_out_dir):
                     os.makedirs(this_out_dir)
 
-                if os.path.isdir(process_path):
-                    # Here we assume that this is a directory of isolated cifs
-                    for cif in os.listdir(process_path):
-                        cif_path = os.path.join(process_path, cif)
-
-                        element = cif.split('_')[2].split('.')[0]
-                        filename = icsd_code + "_" + element + '.pers'
-                        pers_output_path = os.path.join(this_out_dir, filename)
-
-                        process_cif(cif_path, pers_output_path, args['timeout'])
-
-                else:
+                if args['splitting'] == "ion":
                     # Here we assume that the given path points to a cif file
+                    print("IONS")
+                    isolated_cifs = IonIsolator(process_path)
+                    elements = ["cations", "anions", "neutrals"]
+
+                elif args['splitting'] == "elements":
                     isolated_cifs = ElementIsolator(process_path)
                     elements = isolated_cifs.elements
-                    for i, cif in enumerate(isolated_cifs.isolated_cifs):
-                        filename = icsd_code + "_" + elements[i].group() + '.pers'
-                        pers_output_path = os.path.join(output_path, filename)
+                    print(elements)
+
+                print(isolated_cifs.isolated_cifs)
+
+                for i, cif in enumerate(isolated_cifs.isolated_cifs):
+                    if cif != None:
+                        filename = icsd_code + "_" + elements[i] + '.pers'
+                        pers_output_path = os.path.join(output_path, icsd_code, filename)
 
                         with tempfile.NamedTemporaryFile(mode="w+t") as tmp:
                             tmp.write(str(cif) + "\n")
@@ -182,16 +180,9 @@ if __name__ == '__main__':
         if os.path.isfile(input_path):
             filename = input_path.split('/')[-1]
             icsd_code = input_path.split('/')[-2]
-            filename = filename[:-4] + ".pers"
-
-
-            pers_output_path = os.path.join(output_path, icsd_code, filename)
+            out_filename = filename[:-4] + ".pers"
+            pers_output_path = os.path.join(output_path, icsd_code, out_filename)
 
             print(f"Processing {input_path}")
             process_cif(input_path, pers_output_path, args['timeout'],
                         filename=filename)
-
-
-    # else:
-    #     x = CifToPers(input_path, output_path)
-    #     print("Persistence file written with expansion {} and {} points".format(x.xyz_expansion, x.pers['num_edges']))
