@@ -15,7 +15,11 @@ get around this I spawn a new process and kill it if it takes more than 10 secon
 to process persistence, then I come back to these and do them unthreaded
 
 mpiexec -n 4 python PersistenceGenerator.py -r -i '/home/cameron/Datasets/ICSD/MineralClass/InputCifFolder/' -o '/home/cameron/Datasets/ICSD/MineralClass/MineralPers/'
-mpiexec -n 1 python PersistenceGenerator.py -r -i '/home/cameron/Datasets/ICSD/test_files' -o '/home/cameron/Documents/tmp/PersGen' -s "elements"
+mpiexec -n 1 python PersistenceGenerator.py -i '/home/cameron/Datasets/ICSD/test_files/icsd_000373.cif' -o '/home/cameron/Documents/tmp/PersGen' -s "elements"
+
+Simple command to run output to a text file
+python PersistenceGenerator.py -i '/home/cameron/Datasets/ICSD/test_files/icsd_000373.cif' > out.txt
+
 
 Options:
 -r  Recursively search through the folder and output to a folder
