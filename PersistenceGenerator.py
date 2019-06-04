@@ -49,7 +49,7 @@ def parse_arguments():
     parser.add_argument('-r', '--recursive', action='store_true', help='Whether to recursively check folder')
     parser.add_argument('-t', '--timeout', default=1000, type=int, help='Length of time to process a single file before terminating process, should be increased for large files but may cause memory overflow if multiple large files are processed simultaneously')
     parser.add_argument('-s', '--splitting', default='ion', type=str, help='How to split up the input cif file for separate persistence diagrams. Available: "ion", "element", "none"')
-    parser.add_argument('-l', '--logdir', default='/var/logs/PersGen.log', type=str, help="Where to save the logs for any files that may not have successfully processed")
+    parser.add_argument('-l', '--logfile', default='/var/logs/PersGen.log', type=str, help="Where to save the logs for any files that may not have successfully processed")
     args = (vars(parser.parse_args()))
     return args
 
@@ -102,7 +102,7 @@ def process_cif(input_path, output_path, timeout, filename=None):
             time_flag = False
 
     if time_flag == False:
-        with open("/home/cameron/Datasets/ICSD/MineralClass/out_of_time_cif_1000", "a+") as myfile:
+        with open(args['logfile'], "a+") as myfile:
                 myfile.write(f"{input_path}\n")
                 myfile.close()
     p.terminate()
