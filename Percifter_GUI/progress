@@ -1,0 +1,4 @@
+04/06/2019
+Started work on making the GUI, done small program which lists a dir and displays files 
+ISSUES - Can not open folders via filepicker, program appends to end of display and doesn't clear screen, maybe add some event handlers 
+NEXT WORK - Gop through list of cif files and launch PersistenceGenerator.py on these and display the output to the screen
