@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 
 import CifFile
 
-from ripser import ripser
-import cechmate as cm
+# from ripser import ripser
+# import cechmate as cm
 import gudhi as gd
 
 from diffpy.structure import loadStructure
@@ -254,12 +254,6 @@ class CifToPers():
 
 if __name__ == '__main__':
     input_path = '/home/cameron/Documents/tmp/icsd_977903/icsd_977903_Fe.cif'
-    test_folder = '/home/cameron/Documents/tmp/icsd_977903/'
     out_path = '/home/cameron/Documents/tmp/icsd_977903/icsd_977903_Fe.pers'
-    # x = CifToPers(test_folder + "icsd_977903_Fe.cif", out_path)
-    # for filename in os.listdir(input_folder):
-    #     print(filename)
+
     x = CifToPers(input_path, out_path)
-    # for i in range(1,12):
-    #     print("Li" + str(i) + ".cif")
-    #     x = CifToPers(test_folder + "Li" + str(i) + ".cif", out_path)
