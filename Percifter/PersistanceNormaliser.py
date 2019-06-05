@@ -4,8 +4,14 @@ Author: Cameron Hargreaves
 This simple class takes in a list of persistence points and "normalises" these
 so that the total sum of points is equal to one
 
-We include a method for the modified bottleneck distance on these points
+We include a method for the modified bottleneck distance on these points that
+carries forward a recursive bipartite matching on the two, returning the shared
+counts and the distance between these, and uses this as a modified score metric
+
+The returned value can be used as a distance metric between each homology group
+
 """
+
 import os
 import pickle as pk
 
@@ -14,7 +20,6 @@ from copy import deepcopy
 
 import numpy as np
 
-from scipy import ndimage
 from scipy.spatial.distance import cdist, squareform, euclidean
 from scipy.optimize import linear_sum_assignment
 
@@ -56,12 +61,12 @@ class PersistenceNorm():
             matched_pairs = []
             other_group = other[i]
 
-            # Take out the identical points as these sum to zero
-            group, other_group = self._remove_matching_pairs(group, other_group, matched_pairs)
+            # Recursively match the closest points in each group, calc their
+            # distance and shared cardinality, and append to matched_pairs
             matching = self._bipartite_match(group, other_group, matched_pairs)
 
             # For each of these points sum the product of their distance and
-            # matching frequency
+            # shared cardinality
             scores.append(sum(x[2] * x[3] for x in matching))
 
         return scores
@@ -87,16 +92,17 @@ class PersistenceNorm():
             for i, diagram in enumerate(points):
                 points[i] = diagram[~np.isinf(diagram).any(axis=1)]
 
-            # Round each of these to 5dp and then cast to a list of tuples
+            # Round each of these to 5dp, cast to a list of tuples
             # and apply a Counter
             for homology_group in points:
-                homology_group = [tuple(x) for x in np.round(homology_group, dp)]
+                homology_group = [tuple(x) for x in np.round(homology_group,dp)]
                 count = Counter(homology_group)
                 counter_list.append(count)
 
         self.counter_list = counter_list
 
     def _normalise_points(self, counter_list=None):
+        """Performs standard normalisation in each dimension"""
         if counter_list == None:
             if self.counter_list == None:
                 self._count_points()
@@ -114,40 +120,28 @@ class PersistenceNorm():
 
         self.norm_list = norm_list
 
-    def _remove_matching_pairs(self, freq, other, matched_pairs):
-        # First remove all points that match perfectly from both lists
-        pop_list = []
-        for point in freq.keys():
-            if point in other.keys() and freq[point] == other[point]:
-                pop_list.append(point)
-                matched_pairs.append((point, point, 0, freq[point]))
-
-        for point in pop_list:
-            freq.pop(point)
-            other.pop(point)
-
-        return freq, other
-
     def _bipartite_match(self, freq, other, matched_pairs):
         """
-        Very inefficient implementation to run max bipartite matching
-        TODO: Optimise with Hopcroft-Karp algo
+        Possibly inefficient implementation to run max bipartite matching
+        TODO: Optimise with Hopcroft-Karp algorithm?
         """
         # If we have reached the base case simply add the remaining points
         # unmatched
         if len(freq) == 0:
             for point in other.keys():
-                matched_pairs.append(('_', point, np.linalg.norm(point), other[point]))
+                matched_pairs.append(('_', point, np.linalg.norm(point),
+                                                  other[point]))
             return matched_pairs
 
         elif len(other) == 0:
             for point in freq.keys():
-                matched_pairs.append((point, '_', np.linalg.norm(point), freq[point]))
+                matched_pairs.append((point, '_', np.linalg.norm(point),
+                                                  freq[point]))
             return matched_pairs
 
-        # Unpack and zip the dictionaries into lists of keys and values
-        x, x_counts = zip(*freq.items())
-        y, y_counts = zip(*other.items())
+        # Unpack the dictionaries into lists of points
+        x = tuple(freq.keys())
+        y = tuple(other.keys())
 
         # Compute a distance matrix of these and then use the hungarian
         # algorithm in linear_sum_assignment() to create the minimal bipartite
@@ -165,7 +159,7 @@ class PersistenceNorm():
                 other.pop(y_i)
 
             elif freq[x_i] > other[y_i]:
-                matched_pairs.append((x_i, y_i, euclidean(x_i, y_i), other[y_i]))
+                matched_pairs.append((x_i, y_i, euclidean(x_i, y_i),other[y_i]))
                 freq[x_i] -= other[y_i]
                 other.pop(y_i)
 
@@ -174,6 +168,8 @@ class PersistenceNorm():
                 other[y_i] -= freq[x_i]
                 freq.pop(x_i)
 
+        # After we have reduced the dictionaries sizes, call this again on the
+        # remaining values
         self._bipartite_match(freq, other, matched_pairs)
 
         return matched_pairs
