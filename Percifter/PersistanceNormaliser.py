@@ -21,18 +21,51 @@ from scipy.optimize import linear_sum_assignment
 def main():
     test_string1 = '/home/cameron/Documents/tmp/PersGen/icsd_000373/icsd_000373_anions.pers'
     test_string2 = '/home/cameron/Documents/tmp/PersGen/icsd_001017/icsd_001017_anions.pers'
-    pers_points = pk.load(open(test_string, "rb"))
+
+    pers_points = pk.load(open(test_string1, "rb"))
     x = PersistenceNorm(pers_points)
-    x._count_points()
-    x.normalise_points()
-    x.normalised_bottleneck(deepcopy(x.norm_list), deepcopy(x.norm_list))
-    print()
+    pers_points = pk.load(open(test_string2, "rb"))
+    y = PersistenceNorm(pers_points)
+
+    score = x.normalised_bottleneck(y)
+
+    print(score)
 
 class PersistenceNorm():
     def __init__(self, points):
         self.points = points
         self.counter_list = []
         self._count_points()
+        self._normalise_points()
+
+    def normalised_bottleneck(self, other, freq_self=None):
+        """
+        Perform a bartitite maximal matching of two frequency counts,
+        recursively called until all points are matched together
+        This only takes into account the homology groups of self and will not
+        match with higher dimensions in other and currently will break if self
+        has more dimensions than other
+        """
+        if freq_self == None:
+            freq_self = deepcopy(self.norm_list)
+
+        if type(other) == PersistenceNorm:
+            other = deepcopy(other.norm_list)
+
+        scores = []
+        for i, group in enumerate(freq_self):
+            matched_pairs = []
+            other_group = other[i]
+
+            # Take out the identical points as these sum to zero
+            group, other_group = self._remove_matching_pairs(group, other_group, matched_pairs)
+            matching = self._bipartite_match(group, other_group, matched_pairs)
+
+            # For each of these points sum the product of their distance and
+            # matching frequency
+            scores.append(sum(x[2] * x[3] for x in matching))
+
+        return scores
 
     def _count_points(self, dp=5):
         """
@@ -47,7 +80,7 @@ class PersistenceNorm():
         points = self.points
         # In case it has already been reduced
         if type(points) is Counter:
-            self.point_counter = points
+            counter_list = points
 
         # Standard output should be a list of 2D numpy arrays
         elif type(points) is list:
@@ -64,7 +97,7 @@ class PersistenceNorm():
 
         self.counter_list = counter_list
 
-    def normalise_points(self, counter_list=None):
+    def _normalise_points(self, counter_list=None):
         if counter_list == None:
             if self.counter_list == None:
                 self._count_points()
@@ -82,33 +115,7 @@ class PersistenceNorm():
 
         self.norm_list = norm_list
 
-    def normalised_bottleneck(self, freq_self, other):
-        """
-        Perform a bartitite maximal matching of two frequency counts,
-        recursively called until all points are matched together
-        This only takes into account the homology groups of self and will not
-        match with higher dimensions in other and currently will break if self
-        has more dimensions than other
-        """
-        if freq_self == None:
-            freq_self = self.norm_list
-
-        scores = []
-        for i, group in enumerate(freq_self):
-            matched_pairs = []
-            other_group = other[i]
-
-            # Take out the identical points as these sum to zero
-            group, other_group = self.remove_matching_pairs(group, other_group, matched_pairs)
-            matching = self._bipartite_match(group, other_group, matched_pairs)
-
-            # For each of these points sum the product of their distance and
-            # matching frequency
-            scores.append(sum(x[2] * x[3] for x in matching))
-
-        return scores
-
-    def remove_matching_pairs(self, freq, other, matched_pairs):
+    def _remove_matching_pairs(self, freq, other, matched_pairs):
         # First remove all points that match perfectly from both lists
         pop_list = []
         for point in freq.keys():
@@ -171,8 +178,6 @@ class PersistenceNorm():
         self._bipartite_match(freq, other, matched_pairs)
 
         return matched_pairs
-
-
 
 if __name__ == "__main__":
     main()
