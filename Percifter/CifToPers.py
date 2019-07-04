@@ -20,8 +20,9 @@ import matplotlib.pyplot as plt
 
 import CifFile
 
-from ripser import ripser
-import cechmate as cm
+# Difficulties in setting up these two libraries, they may be re-added in future version
+# from ripser import ripser
+# import cechmate as cm
 import gudhi as gd
 
 from diffpy.structure import loadStructure
@@ -30,7 +31,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 
 from .Niggli import Niggli
 
-# Ripser throws a lot of annoying warnings!
+# Ripser/matplotlib throw a lot of annoying warnings!
 import warnings
 #warnings.filterwarnings("ignore")
 
@@ -95,9 +96,7 @@ class CifToPers():
             print(f"Failed cif file, check the formatting against others or get in touch with C.J.Hargreaves@Liverpool.ac.uk\n{e}")
 
     def generate_lattice(self, cif, namespace):
-        '''
-        Simply return lattice parameters from the cif file as a dict
-        '''
+        ''' Return lattice parameters from the cif file as a dict '''
         lattice = {}
         lattice['a'] = cif[namespace]['_cell_length_a']
         lattice['b'] = cif[namespace]['_cell_length_b']
@@ -116,18 +115,17 @@ class CifToPers():
 
     def calc_niggli_expansion(self, lattice, niggli_lattice):
         '''
-        Calculate the minimal expansion of the lattice parameters to generate
-        a supercell that encompasses the Niggli cell
+        Generate a supercell that encompasses the Niggli cell. Will probably use 
+        Niggli class
         TODO FINISH THIS FUNCTION
         '''
 
-    def normalise_coords(self, coords):
-        dist = dist = euclidean_distances(coords, coords) # make distance matrix
-        mindist = np.min(dist[np.nonzero(dist)]) # find the smallest nonzero distance
-        normed_coord = coords / mindist # scale by this to make the shortest distance 1
-        return normed_coord
 
     def generate_supercell(self, expansion):
+        '''
+        Use diffpy to create a new supercell via dimensions [x, y, z]
+        Parameter: expansion, list of integers
+        '''
         expandedCell = supercell(self.diffpy_molecule, expansion) # Expand
         coords = np.array(expandedCell.xyz_cartn) # Take this as a numpy array
         return expandedCell, coords
@@ -152,14 +150,15 @@ class CifToPers():
                 pers.append(np.vstack(dim_points))
             return pers
 
-        elif self.complex == 'cech':
-            cech = cm.Cech(max_dim=1)
-            cech.build(xyz_coords)
-            return cech.diagrams()
+        # TODO re-test the other complexes
+        # elif self.complex == 'cech':
+        #     cech = cm.Cech(max_dim=1)
+        #     cech.build(xyz_coords)
+        #     return cech.diagrams()
 
-        elif self.complex == 'rips':
-            pers = ripser(xyz_coords, maxdim=1)
-            return pers['dgms'] # return diagram
+        # elif self.complex == 'rips':
+        #     pers = ripser(xyz_coords, maxdim=1)
+        #     return pers['dgms'] # return diagram
 
     def new_persistence(self, expansion_factor):
         '''
@@ -252,14 +251,21 @@ class CifToPers():
             frequency_map.pop(point)
         return frequency_map # A dictionary of counts
 
+    
+    def normalise_coords(self, coords):
+        """
+        UNUSED PRESENTLY
+        Normalise distances by making the smallest distance of the coordinates
+        equal to 1
+        """
+        dist = euclidean_distances(coords, coords) # make distance matrix
+        mindist = np.min(dist[np.nonzero(dist)]) # find the smallest nonzero distance
+        normed_coord = coords / mindist # scale by this to make the shortest distance 1
+        return normed_coord
+
 if __name__ == '__main__':
     input_path = '/home/cameron/Documents/tmp/icsd_977903/icsd_977903_Fe.cif'
     test_folder = '/home/cameron/Documents/tmp/icsd_977903/'
     out_path = '/home/cameron/Documents/tmp/icsd_977903/icsd_977903_Fe.pers'
-    # x = CifToPers(test_folder + "icsd_977903_Fe.cif", out_path)
-    # for filename in os.listdir(input_folder):
-    #     print(filename)
+
     x = CifToPers(input_path, out_path)
-    # for i in range(1,12):
-    #     print("Li" + str(i) + ".cif")
-    #     x = CifToPers(test_folder + "Li" + str(i) + ".cif", out_path)
