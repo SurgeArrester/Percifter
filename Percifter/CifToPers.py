@@ -1,5 +1,5 @@
 '''
-CifToPers takes a ci file and processes the persistence of this
+CifToPers takes a cif file and processes the persistence of this
 
 Copyright (C) 2019 Cameron Hargreaves
 
@@ -35,9 +35,6 @@ import matplotlib.pyplot as plt
 
 import CifFile
 
-# Difficulties in setting up these two libraries, they may be re-added in future version
-# from ripser import ripser
-# import cechmate as cm
 import gudhi as gd
 
 from diffpy.structure import loadStructure
@@ -47,9 +44,9 @@ from sklearn.metrics.pairwise import euclidean_distances
 from Niggli import Niggli
 from PersistanceNormaliser import PersistenceNorm
 
-# Ripser/matplotlib throw a lot of annoying warnings!
+# Matplotlib throw a lot of annoying warnings!
 import warnings
-#warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
 class CifToPers():
     def __init__(self, input_path=None,
