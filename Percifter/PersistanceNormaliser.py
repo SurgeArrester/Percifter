@@ -15,7 +15,7 @@ The returned value can be used as a distance metric between each homology group
 import os
 import pickle as pk
 
-from collections import Counter
+from collections import Counter, OrderedDict
 from copy import deepcopy
 
 import numpy as np
@@ -23,24 +23,140 @@ import numpy as np
 from scipy.spatial.distance import cdist, squareform, euclidean
 from scipy.optimize import linear_sum_assignment
 
+from ortools.graph import pywrapgraph
+
 def main():
-    test_string1 = '/home/cameron/Documents/tmp/PersGen/icsd_000373/icsd_000373_anions.pers'
-    test_string2 = '/home/cameron/Documents/tmp/PersGen/icsd_001017/icsd_001017_anions.pers'
+    test_string1 = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/Percifter/OutFiles/Li01.pers'
+    test_string2 = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/Percifter/OutFiles/Li02.pers'
 
     pers_points = pk.load(open(test_string1, "rb"))
     x = PersistenceNorm(pers_points)
     pers_points = pk.load(open(test_string2, "rb"))
     y = PersistenceNorm(pers_points)
 
-    score = x.normalised_bottleneck(y)
-    print(score)
+    scores = x.flow_norm_bottleneck(y)
+    print(f"\n{scores}")
+
+    # score = x.normalised_bottleneck(y)
+    # print(score)
 
 class PersistenceNorm():
-    def __init__(self, points):
+    FP_MULTIPLIER = 100000
+
+    def __init__(self, points, verbose=True):
         self.points = points
+        self.verbose = verbose
         self.counter_list = []
         self._count_points()
         self._normalise_points()
+
+    def flow_norm_bottleneck(self, comp2, comp1=None):
+        """
+        Use the minimal cost multicomodity flow algorithm to generate a distance
+        metric between two ratio disctionaries
+        """
+        if comp1 == None:
+            comp1 = deepcopy(self.norm_list)
+
+        if type(comp2) == PersistenceNorm:
+            comp2 = deepcopy(comp2.norm_list)
+
+        scores = []
+
+        for hom_group_1, hom_group_2, i in zip(comp1, comp2, range(len(comp1))):
+            print(f"\nHomology Group {i}")
+            scores.append(self._flow_dist(hom_group_1, hom_group_2))
+
+        return scores
+
+    def _flow_dist(self, hom_group_1, hom_group_2):
+        start_nodes, end_nodes, labels, capacities, costs, supplies = self._generate_parameters(hom_group_1, hom_group_2)
+
+        # Google OR-tools only take integer values, so we multiply our floats
+        # by self.FP_MULTIPLIER and cast to int
+        capacities = [int(x * self.FP_MULTIPLIER) for x in capacities]
+        supplies = [int(x * self.FP_MULTIPLIER) for x in supplies]
+        costs = [int(x * self.FP_MULTIPLIER) for x in costs]
+
+        # Due to rounding errors, the two supplies may no longer be equal to one
+        # another. We add the difference to the largest value in the smaller set
+        # to allow this to be processed and minimise the error
+        source_tot = sum([x for x in supplies if x > 0])
+        sink_tot = -sum([x for x in supplies if x < 0])
+
+        while sink_tot < source_tot:
+            supplies[supplies.index(min(supplies))] -= 1
+            sink_tot = -sum([x for x in supplies if x < 0])
+
+        while source_tot < sink_tot:
+            supplies[supplies.index(max(supplies))] += 1
+            source_tot = sum([x for x in supplies if x > 0])
+
+        # Instantiate a SimpleMinCostFlow solver
+        min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+
+        # Add each arc.
+        for i in range(0, len(start_nodes)):
+            min_cost_flow.AddArcWithCapacityAndUnitCost(start_nodes[i], end_nodes[i],
+                                                        capacities[i], costs[i])
+
+        # Add node supplies.
+        for i in range(0, len(supplies)):
+            min_cost_flow.SetNodeSupply(i, supplies[i])
+
+        feasibility_status = min_cost_flow.Solve()
+
+        if feasibility_status == min_cost_flow.OPTIMAL:
+            dist = min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2
+
+            if self.verbose:
+                print('Distance Score:', min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2)
+                print('Arc  \t|\t  Flow / Capacity  \t|\t Cost')
+                for i in range(min_cost_flow.NumArcs()):
+                    cost = min_cost_flow.Flow(i) * min_cost_flow.UnitCost(i)
+                    print('%s -> %s \t | \t %3.5s / %3.5s \t|\t %3.5s' % (
+                        #min_cost_flow.Tail(i),
+                        labels[min_cost_flow.Tail(i)].split('_')[0],
+                        #min_cost_flow.Head(i),
+                        labels[min_cost_flow.Head(i)].split('_')[0],
+                        min_cost_flow.Flow(i) / self.FP_MULTIPLIER,
+                        min_cost_flow.Capacity(i) / self.FP_MULTIPLIER,
+                        cost / self.FP_MULTIPLIER ** 2 ))
+
+            return dist
+
+        else:
+            return "Infeasible solution"
+
+    def _generate_parameters(self, source, sink):
+        start_nodes = []
+        start_labels = []
+        end_nodes = []
+        end_labels = []
+
+        capacities = []
+        costs = []
+        supply_tracker = OrderedDict()
+
+        for i, key_value_source in enumerate(source.items()):
+            for j, key_value_sink in enumerate(sink.items()):
+                start_nodes.append(i)
+                start_labels.append(key_value_source[0])
+                end_nodes.append(j + len(source))
+                end_labels.append(key_value_sink[0])
+                capacities.append(min(key_value_source[1], key_value_sink[1]))
+                costs.append(euclidean(key_value_sink[0], key_value_source[0]))
+
+        for lab in start_labels:
+            supply_tracker[str(lab) + "_source"] = source[lab]
+
+        for lab in end_labels:
+            supply_tracker[str(lab) + "_sink"] = -sink[lab]
+
+        labels = list(supply_tracker.keys())
+        supplies = list(supply_tracker.values())
+
+        return start_nodes, end_nodes, labels, capacities, costs, supplies
 
     def normalised_bottleneck(self, other, freq_self=None):
         """
@@ -102,7 +218,7 @@ class PersistenceNorm():
         self.counter_list = counter_list
 
     def _normalise_points(self, counter_list=None):
-        """Performs standard normalisation in each dimension"""
+        """Performs standard normalisation in each dimension to give ratios"""
         if counter_list == None:
             if self.counter_list == None:
                 self._count_points()

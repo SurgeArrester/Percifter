@@ -67,7 +67,6 @@ class CifToPers():
         if filename:
             self.filename = filename
         else:
-            print(input_path)
             # Take the name of the cif file from the path
             self.filename = input_path.split('/')[-1].split('.')[-2]
 
@@ -95,8 +94,8 @@ class CifToPers():
         # Persistence points
         self.find_minimal_expansion()
 
-        # We can generate a lot of noise from floating point errors, if desired
-        # we can remove these points 
+        # We can generate a lot of noise from floating point errors
+        # we can remove these points if desired
         self.remove_noise(self.pers)
 
         self.write_to_file(self.pers, self.output_path, reduced_persistence)
@@ -145,12 +144,12 @@ class CifToPers():
         '''
         Apply the given filtration/complex (default alpha) and return the
         persistence diagrams of each. Default to first homology group only. Currently
-        using three different libraries
+        using two different libraries
         TODO: Cleanup, maybe all use gudhi?
         '''
         if self.complex == 'alpha':
             alpha_complex = gd.AlphaComplex(points=xyz_coords)
-            simplex_tree = alpha_complex.create_simplex_tree(max_alpha_square=60.0) # Essentially a delaunay triangulation
+            simplex_tree = alpha_complex.create_simplex_tree() # Essentially a delaunay triangulation
             persistence = simplex_tree.persistence()
 
             # Convert this long list into a k-dimensional array for each dimension
@@ -159,7 +158,23 @@ class CifToPers():
             for i in range(dimensions):
                 dim_points = [np.array(x) for (y, (x)) in persistence if y == i]
                 pers.append(np.vstack(dim_points))
-            pers = self.round_persistence(pers)
+            self.round_persistence(pers)
+            self.remove_noise(pers)
+            return pers
+
+        elif self.complex == 'rips':
+            rips_complex = gd.RipsComplex(points=xyz_coords)
+            simplex_tree = rips_complex.create_simplex_tree(max_dimension=3)
+            persistence = simplex_tree.persistence()
+
+            # Convert this long list into a k-dimensional array for each dimension
+            dimensions = max([x for (x, (y)) in persistence]) + 1 
+            pers = []
+            for i in range(dimensions):
+                dim_points = [np.array(x) for (y, (x)) in persistence if y == i]
+                pers.append(np.vstack(dim_points))
+            self.round_persistence(pers)
+            self.remove_noise(pers)
             return pers
 
         # TODO re-test the other complexes
@@ -168,10 +183,7 @@ class CifToPers():
         #     cech.build(xyz_coords)
         #     return cech.diagrams()
 
-        # elif self.complex == 'rips':
-        #     pers = ripser(xyz_coords, maxdim=1)
-        #     return pers['dgms'] # return diagram
-
+        
     def new_persistence(self, expansion_factor):
         '''
         Take our cell, expand it by expansion_factor and recalculate the coords
@@ -182,27 +194,29 @@ class CifToPers():
             expanded_coords = self.normalise_coords(expanded_coords)
         pers = self.generate_persistence(expanded_coords)
         pers = self.round_persistence(pers)
+        self.expanded_coords = expanded_coords
         return pers, expanded_coords
 
-    def increment_expansion(self, i, xyz):
+    def increment_expansion(self, xyz):
         '''
         Keep incrementing through the dimension in the expansion factor until
         incrementing no longer increases the number of persistence points
         '''
         while True:
-            xyz[i] += 1 # Increment our expansion factor
+            xyz = [x + 1 for x in xyz] # Increment our expansion factor
             new_pers, new_coords = self.new_persistence((xyz))
             if len(new_pers) > len(self.pers): # If there's a new homology dimension update
                 self.pers, self.expanded_coords = new_pers, new_coords
 
-            for j in range(len(self.pers)): # Else if theres a new persistence point in any dimension
-                if len(np.unique(self.pers[j])) < len(np.unique(new_pers[j])):
-                    self.pers, self.expanded_coords = new_pers, new_coords
-                else:
-                    self.pers, self.expanded_coords = new_pers, new_coords
-                    return xyz
+            else:
+                for j in range(len(self.pers)): # Else if theres a new persistence point in any dimension
+                    if len(np.unique(self.pers[j])) < len(np.unique(new_pers[j])):
+                        self.pers, self.expanded_coords = new_pers, new_coords
+                    else:
+                        self.pers, self.expanded_coords = new_pers, new_coords
+                        return xyz
 
-            if xyz[i] == self.MAX_EXPANSION: # else if we have reached max expansion factor
+            if xyz[0] == self.MAX_EXPANSION: # else if we have reached max expansion factor
                 break
         return xyz
 
@@ -212,14 +226,13 @@ class CifToPers():
         expansion
         '''
         xyz = self.INITIAL_EXPANSION       # set initial expansion to input
-        for i in range(3):    # Loop through each dimension
-            xyz = self.increment_expansion(i, xyz)
+        xyz = self.increment_expansion(xyz)
         self.xyz_expansion = xyz
 
-        print(self.filename)
-        print("XYZ Expansion factor is: {}".format(xyz))
-        for i in range(len(self.pers)):
-            print(f"Homology dimension {i} has unique points: {np.unique(self.pers[i])}") # just the unique points
+        self.remove_noise(self.pers)
+        # print("XYZ Expansion factor is: {}".format(xyz))
+        # for i in range(len(self.pers)):
+        #     print(f"Homology dimension {i} has unique points: {np.unique(self.pers[i])}") # just the unique points
 
     def write_to_file(self, pers, output_path, reduction):
         '''
@@ -240,6 +253,7 @@ class CifToPers():
             print(f"{self.filename} failed to write to file in CifToPers.py because of {e}")
 
     def round_persistence(self, pers):
+        """Use numpy.around to round to DECIMAL_ROUNDING places"""
         for i in range(len(pers)):
             pers[i] = np.around(pers[i], self.DECIMAL_ROUNDING)
         return pers
