@@ -1,5 +1,23 @@
 """
-Author: Cameron Hargreaves
+PersistenceNormaliser takes a list of persistence points, calculate their ratios
+and provide methods for similarity metrics
+
+Copyright (C) 2019  Cameron Hargreaves
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+--------------------------------------------------------------------------------
 
 This simple class takes in a list of persistence points and "normalises" these
 so that the total sum of points is equal to one, giving the ratio of each
@@ -17,6 +35,22 @@ score metric
 The returned value from flow_norm_bottleneck() can be used as a distance metric
 between two persistence diagrams
 
+LICENCE
+OR-Tools
+
+Copyright 2010 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
 import os
@@ -98,7 +132,7 @@ class PersistenceNorm():
 
         norm_list = []
 
-        for i, point_counter in enumerate(counter_list):
+        for _, point_counter in enumerate(counter_list):
             total = sum(point_counter.values(), 0.0)
             for key in point_counter:
                 point_counter[key] /= total
@@ -108,8 +142,8 @@ class PersistenceNorm():
 
     def flow_norm_bottleneck(self, comp2, comp1=None):
         """
-        Use the minimal cost multicomodity flow algorithm to generate a distance
-        metric between two ratio disctionaries
+        Use the minimal cost multi-commodity flow algorithm to generate a distance
+        metric between two ratio dictionaries
         """
         if comp1 == None:
             comp1 = deepcopy(self.norm_list)
@@ -226,93 +260,6 @@ class PersistenceNorm():
         supplies = list(supply_tracker.values())
 
         return start_nodes, end_nodes, labels, capacities, costs, supplies
-
-    def normalised_bottleneck(self, other, freq_self=None):
-        """
-        DEPRECATED WILL BE REMOVED IN FUTURE VERSIONS
-
-        Perform a bartitite maximal matching of two frequency counts,
-        recursively called until all points are matched together
-        This only takes into account the homology groups of self and will not
-        match with higher dimensions in other and currently will break if self
-        has more dimensions than other
-        """
-        if freq_self == None:
-            freq_self = deepcopy(self.norm_list)
-
-        if type(other) == PersistenceNorm:
-            other = deepcopy(other.norm_list)
-
-        scores = []
-        for i, group in enumerate(freq_self):
-            matched_pairs = []
-            other_group = other[i]
-
-            # Recursively match the closest points in each group, calc their
-            # distance and shared cardinality, and append to matched_pairs
-            matching = self._bipartite_match(group, other_group, matched_pairs)
-
-            # For each of these points sum the product of their distance and
-            # shared cardinality
-            scores.append(sum(x[2] * x[3] for x in matching))
-
-        return scores
-
-    def _bipartite_match(self, freq, other, matched_pairs):
-        """
-        DEPRECATED WILL BE REMOVED IN FUTURE VERSIONS
-
-        Possibly inefficient implementation to run max bipartite matching
-        TODO: Optimise with Hopcroft-Karp algorithm?
-        """
-        # If we have reached the base case simply add the remaining points
-        # unmatched
-        if len(freq) == 0:
-            for point in other.keys():
-                matched_pairs.append(('_', point, np.linalg.norm(point),
-                                                  other[point]))
-            return matched_pairs
-
-        elif len(other) == 0:
-            for point in freq.keys():
-                matched_pairs.append((point, '_', np.linalg.norm(point),
-                                                  freq[point]))
-            return matched_pairs
-
-        # Unpack the dictionaries into lists of points
-        x = tuple(freq.keys())
-        y = tuple(other.keys())
-
-        # Compute a distance matrix of these and then use the hungarian
-        # algorithm in linear_sum_assignment() to create the minimal bipartite
-        # matching of these two
-        dist_matrix = cdist(x, y)
-        row_ind, col_ind = linear_sum_assignment(dist_matrix)
-
-        x_matched = [x[i] for i in row_ind]
-        y_matched = [y[i] for i in col_ind]
-
-        for (x_i, y_i) in zip(x_matched, y_matched):
-            if freq[x_i] == other[y_i]:
-                matched_pairs.append((x_i, y_i, euclidean(x_i, y_i), freq[x_i]))
-                freq.pop(x_i)
-                other.pop(y_i)
-
-            elif freq[x_i] > other[y_i]:
-                matched_pairs.append((x_i, y_i, euclidean(x_i, y_i),other[y_i]))
-                freq[x_i] -= other[y_i]
-                other.pop(y_i)
-
-            elif freq[x_i] < other[y_i]:
-                matched_pairs.append((x_i, y_i, euclidean(x_i, y_i), freq[x_i]))
-                other[y_i] -= freq[x_i]
-                freq.pop(x_i)
-
-        # After we have reduced the dictionaries sizes, call this again on the
-        # remaining values
-        self._bipartite_match(freq, other, matched_pairs)
-
-        return matched_pairs
 
 if __name__ == "__main__":
     main()

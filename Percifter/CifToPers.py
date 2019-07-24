@@ -1,10 +1,25 @@
 '''
+CifToPers takes a ci file and processes the persistence of this
+
+Copyright (C) 2019 Cameron Hargreaves
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+--------------------------------------------------------------------------------
+
 This class takes an input cif file, performs an expansion in x, y, z dimensions
 and then returns a persistence diagram if we have minimal change on expansions
 by writing to the given filepath
-
-In this file we are experimenting with using ripser to see how this compares to
-gudhi
 
 Parameters
 cif_path : Path to search for cif file
@@ -40,9 +55,8 @@ class CifToPers():
     def __init__(self, input_path=None,
                        output_path=None,
                        simplicial_complex='alpha',
-                       ROUND=True,
+                       write_out=True,
                        DECIMAL_ROUNDING=5,
-                       REMOVE_NOISE=True,
                        SIMILARITY_PERCENTAGE=0.05,
                        INITIAL_EXPANSION=[2, 2, 2],
                        MAX_EXPANSION=10):
@@ -52,7 +66,7 @@ class CifToPers():
         self.MAX_EXPANSION = MAX_EXPANSION
         self.INITIAL_EXPANSION = INITIAL_EXPANSION
 
-        self.cif_path = input_path
+        self.input_path = input_path
         self.complex = simplicial_complex
 
 
@@ -61,12 +75,17 @@ class CifToPers():
         else:
             self.output_path = input_path[:-4] + ".pers"
 
-        self.cif = CifFile.ReadCif(input_path)
+        try:
+            self.cif = CifFile.ReadCif(input_path)
+        except Exception as e:
+            print(f"Cannot read {input_path} make sure it is a correctly formatted cif file in utf8")
+            print(e)
 
         namespace = list(self.cif.keys())[0]
         self.keys = list(self.cif[namespace].keys())
 
         self.lattice = self.generate_lattice(self.cif, namespace)
+
         # TODO implement the Niggli reduction
         # self.niggli_lattice = self.reduce_niggli(self.lattice)
 
@@ -86,7 +105,8 @@ class CifToPers():
         # Use PersistenceNorm to calculate fractional persistence points
         self.normalise_coords(self.pers)
 
-        self.write_to_file(self.pers, self.output_path)
+        if write_out:
+            self.write_to_file(self.pers, self.output_path)
 
     def generate_lattice(self, cif, namespace):
         ''' Return lattice parameters from the cif file as a dict '''
@@ -105,13 +125,6 @@ class CifToPers():
         to generate the Niggli cell
         '''
         return Niggli(lattice).niggli_lattice
-
-    def calc_niggli_expansion(self, lattice, niggli_lattice):
-        '''
-        Generate a supercell that encompasses the Niggli cell. Will probably use
-        Niggli class
-        TODO FINISH THIS FUNCTION
-        '''
 
     def generate_supercell(self, expansion):
         '''
@@ -224,14 +237,12 @@ class CifToPers():
         self.remove_noise(self.pers)
 
     def write_to_file(self, pers, output_path):
-        '''
-        Pickle and write all persistence points to a file
-        '''
+        '''Pickle and write all persistence points to a file'''
         try:
-            pk.dump(pers, open(output_path, "wb" ) )
+            pk.dump(pers, open(output_path, "wb"))
 
         except Exception as e:
-            print(f"{self.filename} failed to write to file in CifToPers.py because of {e}")
+            print(f"{self.output_path} failed to write to file in CifToPers.py because of {e}")
 
     def round_persistence(self, pers):
         """Use numpy.around to round to DECIMAL_ROUNDING places"""
@@ -251,20 +262,6 @@ class CifToPers():
             dim = np.array([x for x in dim if x[0] != x[1]])
             pers[i] = dim
         return pers
-
-
-        # CURRENTLY UNUSED
-        # Remove any points that are 0.5% similar as these have a short lifespan
-        # similar_points = []
-        # lower_bound = 1 - self.SIMILARITY_PERCENTAGE / 2
-        # upper_bound = 1 + self.SIMILARITY_PERCENTAGE / 2
-        # for point in frequency_map: # loop through keys
-        #     x, y = point[1][0], point[1][1] # Take birth and death
-        #     if y >= x * lower_bound and y <= x * upper_bound: # If within 2% similarity remove
-        #         similar_points.append(point)
-        # for point in similar_points:
-        #     frequency_map.pop(point)
-        # return frequency_map # A dictionary of counts
 
     def normalise_coords(self, pers):
         """
