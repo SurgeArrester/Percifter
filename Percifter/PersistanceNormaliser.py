@@ -2,13 +2,20 @@
 Author: Cameron Hargreaves
 
 This simple class takes in a list of persistence points and "normalises" these
-so that the total sum of points is equal to one
+so that the total sum of points is equal to one, giving the ratio of each
+persistence point
 
-We include a method for the modified bottleneck distance on these points that
-carries forward a recursive bipartite matching on the two, returning the shared
-counts and the distance between these, and uses this as a modified score metric
+The input is two processed persistence files from CifToPers and the minimum
+cost multi-commodity flow distance is calculated between the two using google
+OR tools
 
-The returned value can be used as a distance metric between each homology group
+We also include a deprecated method for the modified bottleneck distance on these
+points that carries forward a recursive bipartite matching on the two, returning
+the shared counts and the distance between these, and uses this as a modified
+score metric
+
+The returned value from flow_norm_bottleneck() can be used as a distance metric
+between two persistence diagrams
 
 """
 
@@ -43,149 +50,12 @@ def main():
 class PersistenceNorm():
     FP_MULTIPLIER = 100000
 
-    def __init__(self, points, verbose=True):
+    def __init__(self, points, verbose=False):
         self.points = points
         self.verbose = verbose
         self.counter_list = []
-        self._count_points()
-        self._normalise_points()
-
-    def flow_norm_bottleneck(self, comp2, comp1=None):
-        """
-        Use the minimal cost multicomodity flow algorithm to generate a distance
-        metric between two ratio disctionaries
-        """
-        if comp1 == None:
-            comp1 = deepcopy(self.norm_list)
-
-        if type(comp2) == PersistenceNorm:
-            comp2 = deepcopy(comp2.norm_list)
-
-        scores = []
-
-        for hom_group_1, hom_group_2, i in zip(comp1, comp2, range(len(comp1))):
-            print(f"\nHomology Group {i}")
-            scores.append(self._flow_dist(hom_group_1, hom_group_2))
-
-        return scores
-
-    def _flow_dist(self, hom_group_1, hom_group_2):
-        start_nodes, end_nodes, labels, capacities, costs, supplies = self._generate_parameters(hom_group_1, hom_group_2)
-
-        # Google OR-tools only take integer values, so we multiply our floats
-        # by self.FP_MULTIPLIER and cast to int
-        capacities = [int(x * self.FP_MULTIPLIER) for x in capacities]
-        supplies = [int(x * self.FP_MULTIPLIER) for x in supplies]
-        costs = [int(x * self.FP_MULTIPLIER) for x in costs]
-
-        # Due to rounding errors, the two supplies may no longer be equal to one
-        # another. We add the difference to the largest value in the smaller set
-        # to allow this to be processed and minimise the error
-        source_tot = sum([x for x in supplies if x > 0])
-        sink_tot = -sum([x for x in supplies if x < 0])
-
-        while sink_tot < source_tot:
-            supplies[supplies.index(min(supplies))] -= 1
-            sink_tot = -sum([x for x in supplies if x < 0])
-
-        while source_tot < sink_tot:
-            supplies[supplies.index(max(supplies))] += 1
-            source_tot = sum([x for x in supplies if x > 0])
-
-        # Instantiate a SimpleMinCostFlow solver
-        min_cost_flow = pywrapgraph.SimpleMinCostFlow()
-
-        # Add each arc.
-        for i in range(0, len(start_nodes)):
-            min_cost_flow.AddArcWithCapacityAndUnitCost(start_nodes[i], end_nodes[i],
-                                                        capacities[i], costs[i])
-
-        # Add node supplies.
-        for i in range(0, len(supplies)):
-            min_cost_flow.SetNodeSupply(i, supplies[i])
-
-        feasibility_status = min_cost_flow.Solve()
-
-        if feasibility_status == min_cost_flow.OPTIMAL:
-            dist = min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2
-
-            if self.verbose:
-                print('Distance Score:', min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2)
-                print('Arc  \t|\t  Flow / Capacity  \t|\t Cost')
-                for i in range(min_cost_flow.NumArcs()):
-                    cost = min_cost_flow.Flow(i) * min_cost_flow.UnitCost(i)
-                    print('%s -> %s \t | \t %3.5s / %3.5s \t|\t %3.5s' % (
-                        #min_cost_flow.Tail(i),
-                        labels[min_cost_flow.Tail(i)].split('_')[0],
-                        #min_cost_flow.Head(i),
-                        labels[min_cost_flow.Head(i)].split('_')[0],
-                        min_cost_flow.Flow(i) / self.FP_MULTIPLIER,
-                        min_cost_flow.Capacity(i) / self.FP_MULTIPLIER,
-                        cost / self.FP_MULTIPLIER ** 2 ))
-
-            return dist
-
-        else:
-            return "Infeasible solution"
-
-    def _generate_parameters(self, source, sink):
-        start_nodes = []
-        start_labels = []
-        end_nodes = []
-        end_labels = []
-
-        capacities = []
-        costs = []
-        supply_tracker = OrderedDict()
-
-        for i, key_value_source in enumerate(source.items()):
-            for j, key_value_sink in enumerate(sink.items()):
-                start_nodes.append(i)
-                start_labels.append(key_value_source[0])
-                end_nodes.append(j + len(source))
-                end_labels.append(key_value_sink[0])
-                capacities.append(min(key_value_source[1], key_value_sink[1]))
-                costs.append(euclidean(key_value_sink[0], key_value_source[0]))
-
-        for lab in start_labels:
-            supply_tracker[str(lab) + "_source"] = source[lab]
-
-        for lab in end_labels:
-            supply_tracker[str(lab) + "_sink"] = -sink[lab]
-
-        labels = list(supply_tracker.keys())
-        supplies = list(supply_tracker.values())
-
-        return start_nodes, end_nodes, labels, capacities, costs, supplies
-
-    def normalised_bottleneck(self, other, freq_self=None):
-        """
-        Perform a bartitite maximal matching of two frequency counts,
-        recursively called until all points are matched together
-        This only takes into account the homology groups of self and will not
-        match with higher dimensions in other and currently will break if self
-        has more dimensions than other
-        """
-        if freq_self == None:
-            freq_self = deepcopy(self.norm_list)
-
-        if type(other) == PersistenceNorm:
-            other = deepcopy(other.norm_list)
-
-        scores = []
-        for i, group in enumerate(freq_self):
-            matched_pairs = []
-            other_group = other[i]
-
-            # Recursively match the closest points in each group, calc their
-            # distance and shared cardinality, and append to matched_pairs
-            matching = self._bipartite_match(group, other_group, matched_pairs)
-
-            # For each of these points sum the product of their distance and
-            # shared cardinality
-            scores.append(sum(x[2] * x[3] for x in matching))
-
-        return scores
+        self._count_points()       # Creates self.counter_list
+        self._normalise_points()   # Creates self.norm_list
 
     def _count_points(self, dp=5):
         """
@@ -236,8 +106,162 @@ class PersistenceNorm():
 
         self.norm_list = norm_list
 
+    def flow_norm_bottleneck(self, comp2, comp1=None):
+        """
+        Use the minimal cost multicomodity flow algorithm to generate a distance
+        metric between two ratio disctionaries
+        """
+        if comp1 == None:
+            comp1 = deepcopy(self.norm_list)
+
+        if type(comp2) == PersistenceNorm:
+            comp2 = deepcopy(comp2.norm_list)
+
+        scores = []
+
+        for hom_group_1, hom_group_2, i in zip(comp1, comp2, range(len(comp1))):
+            if self.verbose:
+                print(f"\nHomology Group {i}")
+            scores.append(self._flow_dist(hom_group_1, hom_group_2))
+
+        return scores
+
+    def _flow_dist(self, hom_group_1, hom_group_2):
+        """
+        Use the minimal flow costing to find the distance between two
+        persistence diagrams
+        """
+        start_nodes, end_nodes, labels, capacities, costs, supplies = \
+            self._generate_parameters(hom_group_1, hom_group_2)
+
+        # Google OR-tools only take integer values, so we multiply our floats
+        # by self.FP_MULTIPLIER and cast to ints
+        capacities = [int(x * self.FP_MULTIPLIER) for x in capacities]
+        supplies = [int(x * self.FP_MULTIPLIER) for x in supplies]
+        costs = [int(x * self.FP_MULTIPLIER) for x in costs]
+
+        # Due to rounding errors, the two supplies may no longer be equal to one
+        # another. We add the difference to the largest value in the smaller set
+        # to allow this to be processed and minimise the error
+        source_tot = sum([x for x in supplies if x > 0])
+        sink_tot = -sum([x for x in supplies if x < 0])
+
+        while sink_tot < source_tot:
+            supplies[supplies.index(min(supplies))] -= 1
+            sink_tot = -sum([x for x in supplies if x < 0])
+
+        while source_tot < sink_tot:
+            supplies[supplies.index(max(supplies))] += 1
+            source_tot = sum([x for x in supplies if x > 0])
+
+        # Instantiate a SimpleMinCostFlow solver
+        min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+
+        # Add each arc.
+        for i in range(0, len(start_nodes)):
+            min_cost_flow.AddArcWithCapacityAndUnitCost(start_nodes[i],
+                                                        end_nodes[i],
+                                                        capacities[i],
+                                                        costs[i])
+
+        # Add node supplies.
+        for i in range(0, len(supplies)):
+            min_cost_flow.SetNodeSupply(i, supplies[i])
+
+        feasibility_status = min_cost_flow.Solve()
+
+        if feasibility_status == min_cost_flow.OPTIMAL:
+            dist = min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2
+
+            if self.verbose:
+                print('Distance Score:',   \
+                    min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2)
+                print('Arc  \t|\t  Flow / Capacity  \t|\t Cost')
+                for i in range(min_cost_flow.NumArcs()):
+                    cost = min_cost_flow.Flow(i) * min_cost_flow.UnitCost(i)
+                    print('%s -> %s \t | \t %3.5s / %3.5s \t|\t %3.5s' % (
+                        #min_cost_flow.Tail(i),
+                        labels[min_cost_flow.Tail(i)].split('_')[0],
+                        #min_cost_flow.Head(i),
+                        labels[min_cost_flow.Head(i)].split('_')[0],
+                        min_cost_flow.Flow(i) / self.FP_MULTIPLIER,
+                        min_cost_flow.Capacity(i) / self.FP_MULTIPLIER,
+                        cost / self.FP_MULTIPLIER ** 2 ))
+
+            return dist
+
+        else:
+            return "Infeasible solution"
+
+    def _generate_parameters(self, source, sink):
+        """
+        Create the nodes, labels, costs, capacities and supply/demands for each
+        node in the minimisation problem
+        """
+        start_nodes = []
+        start_labels = []
+        end_nodes = []
+        end_labels = []
+
+        capacities = []
+        costs = []
+        supply_tracker = OrderedDict()
+
+        for i, key_value_source in enumerate(source.items()):
+            for j, key_value_sink in enumerate(sink.items()):
+                start_nodes.append(i)
+                start_labels.append(key_value_source[0])
+                end_nodes.append(j + len(source))
+                end_labels.append(key_value_sink[0])
+                capacities.append(min(key_value_source[1], key_value_sink[1]))
+                costs.append(euclidean(key_value_sink[0], key_value_source[0]))
+
+        for lab in start_labels:
+            supply_tracker[str(lab) + "_source"] = source[lab]
+
+        for lab in end_labels:
+            supply_tracker[str(lab) + "_sink"] = -sink[lab]
+
+        labels = list(supply_tracker.keys())
+        supplies = list(supply_tracker.values())
+
+        return start_nodes, end_nodes, labels, capacities, costs, supplies
+
+    def normalised_bottleneck(self, other, freq_self=None):
+        """
+        DEPRECATED WILL BE REMOVED IN FUTURE VERSIONS
+
+        Perform a bartitite maximal matching of two frequency counts,
+        recursively called until all points are matched together
+        This only takes into account the homology groups of self and will not
+        match with higher dimensions in other and currently will break if self
+        has more dimensions than other
+        """
+        if freq_self == None:
+            freq_self = deepcopy(self.norm_list)
+
+        if type(other) == PersistenceNorm:
+            other = deepcopy(other.norm_list)
+
+        scores = []
+        for i, group in enumerate(freq_self):
+            matched_pairs = []
+            other_group = other[i]
+
+            # Recursively match the closest points in each group, calc their
+            # distance and shared cardinality, and append to matched_pairs
+            matching = self._bipartite_match(group, other_group, matched_pairs)
+
+            # For each of these points sum the product of their distance and
+            # shared cardinality
+            scores.append(sum(x[2] * x[3] for x in matching))
+
+        return scores
+
     def _bipartite_match(self, freq, other, matched_pairs):
         """
+        DEPRECATED WILL BE REMOVED IN FUTURE VERSIONS
+
         Possibly inefficient implementation to run max bipartite matching
         TODO: Optimise with Hopcroft-Karp algorithm?
         """
