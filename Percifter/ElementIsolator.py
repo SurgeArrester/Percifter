@@ -2,6 +2,7 @@
 This class takes in a cif file and returns equivalent cif files each contatining
 a single element from the structural formula only, to be parsed by CifToPers
 
+TODO Should this be deprecated and merged into IonIsolator.py?
 
 Copyright (C) 2019  Cameron Hargreaves
 

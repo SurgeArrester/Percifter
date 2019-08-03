@@ -37,6 +37,8 @@ import CifFile
 
 import gudhi as gd
 
+from copy import deepcopy
+
 from diffpy.structure import loadStructure
 from diffpy.structure.expansion.supercell_mod import supercell
 from sklearn.metrics.pairwise import euclidean_distances
@@ -53,7 +55,7 @@ class CifToPers():
                        output_path=None,
                        simplicial_complex='alpha',
                        write_out=True,
-                       DECIMAL_ROUNDING=5,
+                       DECIMAL_ROUNDING=2,
                        SIMILARITY_PERCENTAGE=0.05,
                        INITIAL_EXPANSION=[2, 2, 2],
                        MAX_EXPANSION=10):
@@ -90,7 +92,9 @@ class CifToPers():
         self.xyz_coords = self.diffpy_molecule.xyz_cartn
         self.expanded_cell, self.expanded_coords = self.generate_supercell(INITIAL_EXPANSION)
 
-        self.pers = self.generate_persistence(self.expanded_coords)
+        self.unit_pers = self.generate_persistence(self.xyz_coords)
+        self.initial_expanded_pers = self.generate_persistence(self.expanded_coords)
+        self.pers = deepcopy(self.initial_expanded_pers)
 
         # Iterate until we find the expansion where we no longer get increased
         # Persistence points, and update self.pers
@@ -100,7 +104,9 @@ class CifToPers():
         self.remove_noise(self.pers)
 
         # Use PersistenceNorm to calculate fractional persistence points
-        self.normalise_coords(self.pers)
+        self.normed_persistence = self.normalise_coords(self.pers)
+        self.unit_norm_pers = self.normalise_coords(self.unit_pers)
+        self.initial_expan_norm_pers = self.normalise_coords(self.initial_expanded_pers)
 
         if write_out:
             self.write_to_file(self.pers, self.output_path)
@@ -266,7 +272,7 @@ class CifToPers():
         points
         """
         self.PersistenceNorm = PersistenceNorm(pers)
-        self.normed_persistence = self.PersistenceNorm.norm_list
+        return self.PersistenceNorm.norm_list
 
     def flow_dist(self, comp2, comp1=None):
         """
