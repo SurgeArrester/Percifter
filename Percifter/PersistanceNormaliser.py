@@ -208,20 +208,19 @@ class PersistenceNorm():
             dist = min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2
 
             if self.verbose:
-                print('Distance Score:',   \
-                    min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2)
-                print('Arc  \t|\t  Flow / Capacity  \t|\t Cost')
+                print('Arc \t\t\t\t\t   Flow  / Capacity    Dist. \t\tCost')
                 for i in range(min_cost_flow.NumArcs()):
                     cost = min_cost_flow.Flow(i) * min_cost_flow.UnitCost(i)
-                    print('%s -> %s \t | \t %3.5s / %3.5s \t|\t %3.5s' % (
+                    print('%-15s -> %-20s    %-8s/%-10s %-16s %-5s' % (
                         #min_cost_flow.Tail(i),
                         labels[min_cost_flow.Tail(i)].split('_')[0],
                         #min_cost_flow.Head(i),
                         labels[min_cost_flow.Head(i)].split('_')[0],
                         min_cost_flow.Flow(i) / self.FP_MULTIPLIER,
-                        min_cost_flow.Capacity(i) / self.FP_MULTIPLIER,
+                        min_cost_flow.Capacity(i) /self.FP_MULTIPLIER,
+                        costs[i] / self.FP_MULTIPLIER,
                         cost / self.FP_MULTIPLIER ** 2 ))
-
+                print(f"Total Cost: {min_cost_flow.OptimalCost() / self.FP_MULTIPLIER**2}\n")
             return dist
 
         else:
