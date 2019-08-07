@@ -2,7 +2,7 @@
 A class to take in a cif file and split it into its' constituent anion, cations
 and neutrally charged particles OR into each constituent element and write each
 of these to a separate output cif file. Can be used standalone to batch process
-folders, or can be used in other programs directly
+folders, or used in other programs directly
 
 Useage:
 
@@ -48,8 +48,20 @@ def main():
 
 class CifIsolator():
     """
-    Similar to Element Isolator except we simply split the compound into positively,
-    and negatively charged ions
+    A class to take in a cif file and split it into its' constituent anion, cations
+    and neutrally charged particles OR into each constituent element and write each
+    of these to a separate output cif file. Can be used standalone to batch process
+    folders, or used in other programs directly
+
+    Useage:
+
+    # Write a cif to a new set of cif files and split by ion
+    CifIsolator(input_path, output_path, splitting_type="ion")
+
+    # Keep isolated cifs in memory and split by element
+    CifIsolator(input_path, splitting_type="element")
+    for cif_file in CifIsolator.isolated_cifs:
+        do_something_with(cif_file)
     """
 
     def __init__(self, filepath, output_path=None, splitting_type="ion"):
@@ -95,6 +107,9 @@ class CifIsolator():
         print()
 
     def isolate(self, i, ion, filepath, isolated_cifs, isolation_function):
+        """
+        Create modified cif files for each of the isolation types
+        """
         # Create a new copy of the file
         modified_cif = ReadCif(filepath)
 
@@ -113,6 +128,9 @@ class CifIsolator():
                                                 ion))
 
     def isolate_ions(self, cif, namespace, loopLabel, searchTerms):
+        """
+        For each set of anions/cations return an isolated cif file
+        """
         if len(searchTerms) < 1:
             return None
 
@@ -147,23 +165,28 @@ class CifIsolator():
         return cif
 
     def get_ions(self, charged_elements):
-            cations = []
-            anions = []
-            neutral = []
+        """
+        Split a list of elements and their charges and split into separate lists
+        """
+        cations = []
+        anions = []
+        neutral = []
 
-            for ion in charged_elements:
-                if ion[-2] == "0" or ion[-1] == "0":
-                    neutral.append(ion)
-                elif ion[-1] == "-":
-                    anions.append(ion)
+        for ion in charged_elements:
+            if ion[-2] == "0" or ion[-1] == "0":
+                neutral.append(ion)
+            elif ion[-1] == "-":
+                anions.append(ion)
 
-                elif ion[-1] == "+":
-                    cations.append(ion)
+            elif ion[-1] == "+":
+                cations.append(ion)
 
-            return cations, anions, neutral
+        return cations, anions, neutral
 
     def isolate_elements(self, cif, namespace, loopLabel, searchTerm):
-        # [key for key in keys if key.find('atom_site') > 0] # take all keys containing atom_site
+        """
+        For a given cif file return an isolated cif file for an element
+        """
         atomSiteKeys = cif[namespace].GetLoop(loopLabel).keys()
         # get the positions of each of the atoms
         atomSiteLabel = cif[namespace][loopLabel]
@@ -193,6 +216,9 @@ class CifIsolator():
         return cif
 
     def write_to_file(self, cifs, output_path):
+        """
+        Writeout a cif file labelled by the ion/element isolated
+        """
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
@@ -210,9 +236,7 @@ class CifIsolator():
                     filename = self.icsd_code + "_" + element + ".cif"
                     outfile = open(output_path + filename, "w")
                     outfile.write(cifs[i].WriteOut())
-                    # x = cifs[i].WriteOut()
                     outfile.close()
-
 
 if __name__ == "__main__":
     main()
