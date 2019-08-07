@@ -84,7 +84,7 @@ def main():
 class PersistenceNorm():
     FP_MULTIPLIER = 100000
 
-    def __init__(self, points, verbose=False):
+    def __init__(self, points, verbose=True):
         self.points = points
         self.verbose = verbose
         self.counter_list = []
