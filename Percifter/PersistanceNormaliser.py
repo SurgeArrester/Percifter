@@ -67,8 +67,8 @@ from scipy.optimize import linear_sum_assignment
 from ortools.graph import pywrapgraph
 
 def main():
-    test_string1 = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/Percifter/OutFiles/Li01.pers'
-    test_string2 = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/Percifter/OutFiles/Li02.pers'
+    test_string1 = './OutFiles/Li01.pers'
+    test_string2 = './OutFiles/Li02.pers'
 
     pers_points = pk.load(open(test_string1, "rb"))
     x = PersistenceNorm(pers_points)
@@ -78,11 +78,9 @@ def main():
     scores = x.flow_norm_bottleneck(y)
     print(f"\n{scores}")
 
-    # score = x.normalised_bottleneck(y)
-    # print(score)
 
 class PersistenceNorm():
-    FP_MULTIPLIER = 100000
+    FP_MULTIPLIER = 100000000
 
     def __init__(self, points, verbose=True):
         self.points = points
@@ -199,7 +197,7 @@ class PersistenceNorm():
                                                         costs[i])
 
         # Add node supplies.
-        for i in range(0, len(supplies)):
+        for i in range(len(supplies)):
             min_cost_flow.SetNodeSupply(i, supplies[i])
 
         feasibility_status = min_cost_flow.Solve()
@@ -208,10 +206,10 @@ class PersistenceNorm():
             dist = min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2
 
             if self.verbose:
-                print('Arc \t\t\t\t\t   Flow  / Capacity    Dist. \t\tCost')
+                print('Arc \t\t\t\t\t   Flow \t  /Capacity  \t   Dist.  \t    Cost')
                 for i in range(min_cost_flow.NumArcs()):
                     cost = min_cost_flow.Flow(i) * min_cost_flow.UnitCost(i)
-                    print('%-15s -> %-20s    %-8s/%-10s %-16s %-5s' % (
+                    print('%-15s -> %-20s    %-15s/%-15s %-16s %-5s' % (
                         #min_cost_flow.Tail(i),
                         labels[min_cost_flow.Tail(i)].split('_')[0],
                         #min_cost_flow.Head(i),

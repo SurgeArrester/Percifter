@@ -50,6 +50,18 @@ from PersistanceNormaliser import PersistenceNorm
 import warnings
 warnings.filterwarnings("ignore")
 
+def main():
+    input_path = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/cifs/icsd_000003_anions.cif'
+    test_path = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/cifs/icsd_000003_cations.cif'
+    out_path = '/home/cameron/Documents/tmp/norm_dist/'
+
+    x = CifToPers(input_path, out_path + "icsd_000003.pers")
+    y = CifToPers(test_path, out_path + "icsd_000003_cations.pers")
+
+    scores = x.flow_dist(y)
+    print("The minimal flow score between each homology group is:")
+    print(f"H0: {scores[0]}\nH1: {scores[1]}\nH2: {scores[2]}")
+
 class CifToPers():
     def __init__(self, input_path=None,
                        output_path=None,
@@ -292,11 +304,5 @@ class CifToPers():
 
 
 if __name__ == '__main__':
-    input_path = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/cifs/icsd_000003_anions.cif'
-    test_path = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/cifs/icsd_000003_cations.cif'
-    out_path = '/home/cameron/Documents/tmp/norm_dist/'
+    main()
 
-    x = CifToPers(input_path, out_path + "icsd_000003.pers")
-    y = CifToPers(test_path, out_path + "icsd_000003_cations.pers")
-
-    print(x.flow_dist(y))
