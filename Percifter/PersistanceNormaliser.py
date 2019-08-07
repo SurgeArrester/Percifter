@@ -142,8 +142,8 @@ class PersistenceNorm():
 
     def flow_norm_bottleneck(self, comp2, comp1=None):
         """
-        Use the minimal cost multi-commodity flow algorithm to generate a distance
-        metric between two ratio dictionaries
+        Use the minimal cost multi-commodity flow algorithm to generate a
+        distance metric between two ratio dictionaries
         """
         if comp1 == None:
             comp1 = deepcopy(self.norm_list)
@@ -176,7 +176,7 @@ class PersistenceNorm():
 
         # Due to rounding errors, the two supplies may no longer be equal to one
         # another. We add the difference to the largest value in the smaller set
-        # to allow this to be processed and minimise the error
+        # to make the sum of both capacities equal
         source_tot = sum([x for x in supplies if x > 0])
         sink_tot = -sum([x for x in supplies if x < 0])
 
@@ -220,11 +220,13 @@ class PersistenceNorm():
                         min_cost_flow.Capacity(i) /self.FP_MULTIPLIER,
                         costs[i] / self.FP_MULTIPLIER,
                         cost / self.FP_MULTIPLIER ** 2 ))
+
                 print(f"Total Cost: {min_cost_flow.OptimalCost() / self.FP_MULTIPLIER**2}\n")
             return dist
 
         else:
-            return "Infeasible solution"
+            # If this has an infeasible solution (which shouldn't happen)
+            return -1
 
     def _generate_parameters(self, source, sink):
         """
@@ -240,6 +242,7 @@ class PersistenceNorm():
         costs = []
         supply_tracker = OrderedDict()
 
+        # Iterate over both lists to create labels for the directed graph
         for i, key_value_source in enumerate(source.items()):
             for j, key_value_sink in enumerate(sink.items()):
                 start_nodes.append(i)
@@ -249,11 +252,11 @@ class PersistenceNorm():
                 capacities.append(min(key_value_source[1], key_value_sink[1]))
                 costs.append(euclidean(key_value_sink[0], key_value_source[0]))
 
-        for lab in start_labels:
-            supply_tracker[str(lab) + "_source"] = source[lab]
+        for label in start_labels:
+            supply_tracker[str(label) + "_source"] = source[label]
 
-        for lab in end_labels:
-            supply_tracker[str(lab) + "_sink"] = -sink[lab]
+        for label in end_labels:
+            supply_tracker[str(label) + "_sink"] = -sink[label]
 
         labels = list(supply_tracker.keys())
         supplies = list(supply_tracker.values())
