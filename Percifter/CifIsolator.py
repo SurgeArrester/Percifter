@@ -1,9 +1,20 @@
 """
 A class to take in a cif file and split it into its' constituent anion, cations
-and neutrally charged particles then write each of these to a separate cif
-file
+and neutrally charged particles OR into each constituent element and write each
+of these to a separate output cif file. Can be used standalone to batch process
+folders, or can be used in other programs directly
 
-Copyright (C) 2019  Cameron Hargreaves
+Useage:
+
+# Write a cif to a new set of cif files and split by ion
+CifIsolator(input_path, output_path, splitting_type="ion")
+
+# Keep isolated cifs in memory and split by element
+CifIsolator(input_path, splitting_type="element")
+for cif_file in CifIsolator.isolated_cifs:
+    do_something_with(cif_file)
+
+Copyright (C) 2019  Cameron Hargreaves, Wenkai Zhang
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,6 +41,7 @@ def main():
     testpath = '/home/cameron/Datasets/ICSD/2017.1_CIFs/icsd_977903.cif'
     output_path_ions = '/home/cameron/Documents/tmp/isolation_test/ions/'
     output_path_elements = '/home/cameron/Documents/tmp/isolation_test/ions/'
+
     x = CifIsolator(testpath, output_path_ions)
     x = CifIsolator(testpath, output_path_elements, splitting_type="element")
     print()
@@ -39,6 +51,7 @@ class CifIsolator():
     Similar to Element Isolator except we simply split the compound into positively,
     and negatively charged ions
     """
+
     def __init__(self, filepath, output_path=None, splitting_type="ion"):
         self.filepath = filepath
         self.output_path = output_path
@@ -49,14 +62,12 @@ class CifIsolator():
         self.cifFile = ReadCif(filepath)
         self.namespace = list(self.cifFile.keys())[0]
         self.cif = self.cifFile[self.namespace] # Simplify as we use this a lot
-        keys = list(self.cif.keys())
+
 
         self.formula = self.cif['_chemical_formula_structural']
         self.elements_sum = self.cif['_chemical_formula_sum']
 
-        elements_in_cif = self.cif["_atom_site_label"]
         charged_elements = self.cif['_atom_type_symbol']
-
         cations, anions, neutrals = self.get_ions(charged_elements)
 
         # Remove all numeric values from elements_sum leaving chars to search on
@@ -76,7 +87,7 @@ class CifIsolator():
             for i, element in enumerate(self.elements):
                 self.isolate(i, element, filepath, isolated_cifs, self.isolate_elements)
 
-
+        self.isolated_cifs = isolated_cifs
 
         if output_path:
             self.write_to_file(isolated_cifs, output_path + self.icsd_code + "/")
@@ -84,8 +95,7 @@ class CifIsolator():
         print()
 
     def isolate(self, i, ion, filepath, isolated_cifs, isolation_function):
-        # Create a deepcopy without implementing the deepcopy methods, needed
-            # due to pythons pass by object reference
+        # Create a new copy of the file
         modified_cif = ReadCif(filepath)
 
         # Isolate the atom sites for each ion
@@ -101,8 +111,6 @@ class CifIsolator():
                                                 self.namespace,
                                                 '_atom_site_aniso_type_symbol',
                                                 ion))
-
-        self.isolated_cifs = isolated_cifs
 
     def isolate_ions(self, cif, namespace, loopLabel, searchTerms):
         if len(searchTerms) < 1:
