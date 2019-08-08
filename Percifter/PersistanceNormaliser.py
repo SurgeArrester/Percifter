@@ -75,14 +75,12 @@ def main():
     pers_points = pk.load(open(test_string2, "rb"))
     y = PersistenceNorm(pers_points)
 
-    scores = x.flow_norm_bottleneck(y)
-    print(f"\n{scores}")
+    scores = x.flow_norm_bottleneck(y, verbose=True)
+    print(f"{scores}")
 
-    # score = x.normalised_bottleneck(y)
-    # print(score)
 
 class PersistenceNorm():
-    FP_MULTIPLIER = 100000
+    FP_MULTIPLIER = 100000000
 
     def __init__(self, points, verbose=True):
         self.points = points
@@ -140,10 +138,10 @@ class PersistenceNorm():
 
         self.norm_list = norm_list
 
-    def flow_norm_bottleneck(self, comp2, comp1=None):
+    def flow_norm_bottleneck(self, comp2, comp1=None, verbose=False):
         """
-        Use the minimal cost multi-commodity flow algorithm to generate a distance
-        metric between two ratio dictionaries
+        Use the minimal cost multi-commodity flow algorithm to generate a
+        distance metric between two ratio dictionaries
         """
         if comp1 == None:
             comp1 = deepcopy(self.norm_list)
@@ -154,13 +152,13 @@ class PersistenceNorm():
         scores = []
 
         for hom_group_1, hom_group_2, i in zip(comp1, comp2, range(len(comp1))):
-            if self.verbose:
+            if verbose:
                 print(f"\nHomology Group {i}")
-            scores.append(self._flow_dist(hom_group_1, hom_group_2))
+            scores.append(self._flow_dist(hom_group_1, hom_group_2, verbose))
 
         return scores
 
-    def _flow_dist(self, hom_group_1, hom_group_2):
+    def _flow_dist(self, hom_group_1, hom_group_2, verbose):
         """
         Use the minimal flow costing to find the distance between two
         persistence diagrams
@@ -176,7 +174,7 @@ class PersistenceNorm():
 
         # Due to rounding errors, the two supplies may no longer be equal to one
         # another. We add the difference to the largest value in the smaller set
-        # to allow this to be processed and minimise the error
+        # to make the sum of both capacities equal
         source_tot = sum([x for x in supplies if x > 0])
         sink_tot = -sum([x for x in supplies if x < 0])
 
@@ -199,7 +197,7 @@ class PersistenceNorm():
                                                         costs[i])
 
         # Add node supplies.
-        for i in range(0, len(supplies)):
+        for i in range(len(supplies)):
             min_cost_flow.SetNodeSupply(i, supplies[i])
 
         feasibility_status = min_cost_flow.Solve()
@@ -207,25 +205,26 @@ class PersistenceNorm():
         if feasibility_status == min_cost_flow.OPTIMAL:
             dist = min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2
 
-            if self.verbose:
-                print('Distance Score:',   \
-                    min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2)
-                print('Arc  \t|\t  Flow / Capacity  \t|\t Cost')
+            if verbose:
+                print('Arc \t\t\t\t\t   Flow \t  /Capacity  \t   Dist.  \t    Cost')
                 for i in range(min_cost_flow.NumArcs()):
                     cost = min_cost_flow.Flow(i) * min_cost_flow.UnitCost(i)
-                    print('%s -> %s \t | \t %3.5s / %3.5s \t|\t %3.5s' % (
+                    print('%-15s -> %-20s    %-15s/%-15s %-16s %-5s' % (
                         #min_cost_flow.Tail(i),
                         labels[min_cost_flow.Tail(i)].split('_')[0],
                         #min_cost_flow.Head(i),
                         labels[min_cost_flow.Head(i)].split('_')[0],
                         min_cost_flow.Flow(i) / self.FP_MULTIPLIER,
-                        min_cost_flow.Capacity(i) / self.FP_MULTIPLIER,
+                        min_cost_flow.Capacity(i) /self.FP_MULTIPLIER,
+                        costs[i] / self.FP_MULTIPLIER,
                         cost / self.FP_MULTIPLIER ** 2 ))
 
+                print(f"Total Cost: {min_cost_flow.OptimalCost() / self.FP_MULTIPLIER**2}\n")
             return dist
 
         else:
-            return "Infeasible solution"
+            # If this has an infeasible solution (which shouldn't happen)
+            return -1
 
     def _generate_parameters(self, source, sink):
         """
@@ -241,6 +240,7 @@ class PersistenceNorm():
         costs = []
         supply_tracker = OrderedDict()
 
+        # Iterate over both lists to create labels for the directed graph
         for i, key_value_source in enumerate(source.items()):
             for j, key_value_sink in enumerate(sink.items()):
                 start_nodes.append(i)
@@ -250,11 +250,11 @@ class PersistenceNorm():
                 capacities.append(min(key_value_source[1], key_value_sink[1]))
                 costs.append(euclidean(key_value_sink[0], key_value_source[0]))
 
-        for lab in start_labels:
-            supply_tracker[str(lab) + "_source"] = source[lab]
+        for label in start_labels:
+            supply_tracker[str(label) + "_source"] = source[label]
 
-        for lab in end_labels:
-            supply_tracker[str(lab) + "_sink"] = -sink[lab]
+        for label in end_labels:
+            supply_tracker[str(label) + "_sink"] = -sink[label]
 
         labels = list(supply_tracker.keys())
         supplies = list(supply_tracker.values())
