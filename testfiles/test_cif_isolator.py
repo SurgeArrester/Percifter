@@ -1,4 +1,4 @@
-import os
-os.chdir("../Percifter")
+import sys
+from os import path
+sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
 from Percifter.CifIsolator import CifIsolator
-print(os.getcwd())
