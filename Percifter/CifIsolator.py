@@ -38,9 +38,9 @@ import re
 import pickle as pk
 
 def main():
-    testpath = '/home/cameron/Percifter/tests/testfiles/icsd_000393.cif'
-    output_path_ions = '/home/cameron/Percifter/tests/testfiles/'
-    output_path_elements = '/home/cameron/Percifter/tests/testfiles/'
+    testpath = '../tests/testfiles/icsd_000393.cif'
+    output_path_ions = '../tests/testfiles/'
+    output_path_elements = '../tests/testfiles/'
 
     x = CifIsolator(testpath, output_path_ions)
     x = CifIsolator(testpath, output_path_elements, splitting_type="element")
