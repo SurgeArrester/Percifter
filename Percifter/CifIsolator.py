@@ -40,7 +40,7 @@ import pickle as pk
 def main():
     testpath = '../tests/testfiles/icsd_000393.cif'
     output_path_ions = '../tests/testfiles/'
-    output_path_elements = '../tests/testfiles/'
+    output_path_elements = '../tests/testfiles/elemental/'
 
     x = CifIsolator(testpath, output_path_ions)
     x = CifIsolator(testpath, output_path_elements, splitting_type="element")
@@ -114,15 +114,28 @@ class CifIsolator():
         modified_cif = ReadCif(filepath)
 
         # Isolate the atom sites for each ion
+
         if '_atom_site_label' in self.cif:
-            isolated_cifs[i] = (isolation_function(modified_cif,
+            if ion in self.elements:
+                isolated_cifs[i] = (isolation_function(modified_cif,
+                                                self.namespace,
+                                                '_atom_site_label',
+                                                ion))
+            else:    
+                isolated_cifs[i] = (isolation_function(modified_cif,
                                                 self.namespace,
                                                 '_atom_site_type_symbol',
                                                 ion))
 
         # Additionally remove aniso labels if these exist
         if '_atom_site_aniso_label' in self.cif:
-            isolated_cifs[i] = (isolation_function(modified_cif,
+            if ion in self.elements:
+                isolated_cifs[i] = (self.isolation_function(modified_cif,
+                                                    self.namespace,
+                                                    '_atom_site_aniso_label',
+                                                    ion))
+            else:
+                isolated_cifs[i] = (isolation_function(modified_cif,
                                                 self.namespace,
                                                 '_atom_site_aniso_type_symbol',
                                                 ion))
@@ -146,6 +159,7 @@ class CifIsolator():
         for i, atom_string in enumerate(atomSiteLabel):
             if atom_string in searchTerms:
                 elementIndex.append(i)
+
 
         featureList = []
         # make a copy of keys, without copying, atomSiteKeys gets updated on
@@ -199,6 +213,8 @@ class CifIsolator():
             atom_no_numeric = "".join(filter(lambda y: not y.isdigit(), atom_string))
             if atom_no_numeric == searchTerm:
                 elementIndex.append(i)
+
+
 
         featureList = []
         # make a copy, without copy atomSiteKeys gets updated on removal of each key which breaks things
