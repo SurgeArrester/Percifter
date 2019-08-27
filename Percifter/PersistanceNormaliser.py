@@ -82,7 +82,7 @@ def main():
 class PersistenceNorm():
     FP_MULTIPLIER = 100000000
 
-    def __init__(self, points, verbose=True):
+    def __init__(self, points=[], verbose=True):
         self.points = points
         self.verbose = verbose
         self.counter_list = []
@@ -104,7 +104,7 @@ class PersistenceNorm():
         if type(points) is Counter:
             counter_list = points
 
-        # Standard output should be a list of 2D numpy arrays
+        # Standard output should be a list of counters
         elif type(points) is list:
             # Strip the infinite points
             for i, diagram in enumerate(points):
@@ -151,6 +151,8 @@ class PersistenceNorm():
 
         scores = []
 
+
+        # Loop through three times, once for each homology group
         for hom_group_1, hom_group_2, i in zip(comp1, comp2, range(len(comp1))):
             if verbose:
                 print(f"\nHomology Group {i}")
@@ -185,6 +187,9 @@ class PersistenceNorm():
         while source_tot < sink_tot:
             supplies[supplies.index(max(supplies))] += 1
             source_tot = sum([x for x in supplies if x > 0])
+
+        while sum(capacities) < source_tot or sum(capacities) < sink_tot:
+            capacities[capacities.index(max(capacities))] += 1
 
         # Instantiate a SimpleMinCostFlow solver
         min_cost_flow = pywrapgraph.SimpleMinCostFlow()
