@@ -67,16 +67,16 @@ from scipy.optimize import linear_sum_assignment
 from ortools.graph import pywrapgraph
 
 def main():
-    test_string1 = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/Percifter/OutFiles/Li01.pers'
-    test_string2 = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/Percifter/OutFiles/Li02.pers'
+    test_string1 = './OutFiles/Li01.pers'
+    test_string2 = './OutFiles/Li02.pers'
 
     pers_points = pk.load(open(test_string1, "rb"))
     x = PersistenceNorm(pers_points)
     pers_points = pk.load(open(test_string2, "rb"))
     y = PersistenceNorm(pers_points)
 
-    scores = x.flow_norm_bottleneck(y, verbose=True)
-    print(f"{scores}")
+    scores = x.flow_norm_bottleneck(y)
+    print(f"\n{scores}")
 
 
 class PersistenceNorm():
@@ -138,7 +138,7 @@ class PersistenceNorm():
 
         self.norm_list = norm_list
 
-    def flow_norm_bottleneck(self, comp2, comp1=None, verbose=False):
+    def flow_norm_bottleneck(self, comp2, comp1=None):
         """
         Use the minimal cost multi-commodity flow algorithm to generate a
         distance metric between two ratio dictionaries
@@ -154,13 +154,13 @@ class PersistenceNorm():
 
         # Loop through three times, once for each homology group
         for hom_group_1, hom_group_2, i in zip(comp1, comp2, range(len(comp1))):
-            if verbose:
+            if self.verbose:
                 print(f"\nHomology Group {i}")
-            scores.append(self._flow_dist(hom_group_1, hom_group_2, verbose))
+            scores.append(self._flow_dist(hom_group_1, hom_group_2))
 
         return scores
 
-    def _flow_dist(self, hom_group_1, hom_group_2, verbose):
+    def _flow_dist(self, hom_group_1, hom_group_2):
         """
         Use the minimal flow costing to find the distance between two
         persistence diagrams
@@ -210,7 +210,7 @@ class PersistenceNorm():
         if feasibility_status == min_cost_flow.OPTIMAL:
             dist = min_cost_flow.OptimalCost() / self.FP_MULTIPLIER ** 2
 
-            if verbose:
+            if self.verbose:
                 print('Arc \t\t\t\t\t   Flow \t  /Capacity  \t   Dist.  \t    Cost')
                 for i in range(min_cost_flow.NumArcs()):
                     cost = min_cost_flow.Flow(i) * min_cost_flow.UnitCost(i)
