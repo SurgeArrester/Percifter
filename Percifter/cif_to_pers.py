@@ -52,12 +52,14 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def main():
-    input_path = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/cifs/icsd_000003_anions.cif'
+    input_path = '/media/cameron/DATADRIVE1/Datasets/ICSD_2019_Li_CIFs/icsd_164088.cif'
     test_path = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/cifs/icsd_000003_cations.cif'
     out_path = '/home/cameron/Documents/tmp/norm_dist/'
 
     x = CifToPers(input_path, out_path + "icsd_000003.pers")
+    print(f"x is processed")
     y = CifToPers(test_path, out_path + "icsd_000003_cations.pers")
+    print(f"y is processed")
 
     scores = x.flow_dist(y)
     print("The minimal flow score between each homology group is:")
@@ -70,7 +72,7 @@ class CifToPers():
                        write_out=True,
                        DECIMAL_ROUNDING=2,
                        SIMILARITY_PERCENTAGE=0.05,
-                       INITIAL_EXPANSION=[2, 2, 2],
+                       INITIAL_EXPANSION=[3, 3, 3],
                        MAX_EXPANSION=10):
 
         self.DECIMAL_ROUNDING = DECIMAL_ROUNDING
@@ -100,25 +102,37 @@ class CifToPers():
         self.lattice = self.generate_lattice(self.cif, namespace)
 
         self.diffpy_molecule = loadStructure(input_path)
-        self.xyz_coords = self.diffpy_molecule.xyz_cartn
+        self.xyz_coords = np.array(self.diffpy_molecule.xyz_cartn)
         self.expanded_cell, self.expanded_coords = self.generate_supercell(INITIAL_EXPANSION)
 
         self.unit_pers = self.generate_persistence(self.xyz_coords)
 
         # generate normalised persistence diagrams for three and five cells
-        threecell_vectors, threecell_coords = self.generate_supercell([3, 3, 3])
-        exp_3 = self.generate_persistence(threecell_coords)
-        self.exp_3 = self.normalise_coords(exp_3)
+        # fivecell_vectors, fivecell_coords = self.generate_supercell([5, 5, 5])
+        # exp_5 = self.generate_persistence(fivecell_coords)
+        # self.exp_5 = self.normalise_coords(exp_5)
 
-        fivecell_vectors, fivecell_coords = self.generate_supercell([5, 5, 5])
-        exp_5 = self.generate_persistence(fivecell_coords)
-        self.exp_5 = self.normalise_coords(exp_5)
+        # print("five")
+        # sevencell_vectors, sevencell_coords = self.generate_supercell([7, 7, 7])
+        # exp_7 = self.generate_persistence(sevencell_coords)
+        # self.exp_7 = self.normalise_coords(exp_7)
 
+        # print("seven")
+        # ninecell_vectors, ninecell_coords = self.generate_supercell([9, 9, 9])
+        # exp_9 = self.generate_persistence(ninecell_coords)
+        # self.exp_9 = self.normalise_coords(exp_9)
+
+        # pk.dump([self.exp_5, self.exp_7, self.exp_9], open(f"{input_path}_tmp.pk", "wb"))
+
+        self.exp_5, self.exp_7, self.exp_9 = pk.load( open( f"{input_path}_tmp.pk", "rb" ) )
+
+        print("nine")
         exp_inf_pers = [None] * len(self.exp_5)
 
         for i, _ in enumerate(self.exp_5):
-            exp_inf_pers[i] = PersistenceLimits(self.exp_3[i], self.exp_5[i]).exp_inf
+            exp_inf_pers[i] = PersistenceLimits(self.exp_5[i], self.exp_7[i], self.exp_9[i]).exp_inf
 
+            print(f"{i} limit calc")
         self.remove_zero_freq(exp_inf_pers)
         self.inf_pers = exp_inf_pers
 
@@ -302,13 +316,7 @@ class CifToPers():
         if comp1 == None:
             comp1 = self.inf_pers
 
-        if type(comp2) == CifToPers:
-            comp2 = comp2.inf_pers
-
-        elif os.path.exists(comp2):
-            comp2 = CifToPers(comp2).inf_pers
-
-        dist = PersistenceNorm().flow_norm_bottleneck(comp1, comp2, verbose=True)
+        dist = PersistenceNorm().flow_norm_bottleneck(comp1, comp2)
         return dist
 
 if __name__ == '__main__':

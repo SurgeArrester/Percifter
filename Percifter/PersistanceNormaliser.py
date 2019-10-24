@@ -66,6 +66,8 @@ from scipy.optimize import linear_sum_assignment
 
 from ortools.graph import pywrapgraph
 
+# import networkx as nx
+
 def main():
     test_string1 = './OutFiles/Li01.pers'
     test_string2 = './OutFiles/Li02.pers'
@@ -143,22 +145,101 @@ class PersistenceNorm():
         Use the minimal cost multi-commodity flow algorithm to generate a
         distance metric between two ratio dictionaries
         """
-        if comp1 == None:
-            comp1 = deepcopy(self.norm_list)
-
-        if type(comp2) == PersistenceNorm:
-            comp2 = deepcopy(comp2.norm_list)
-
         scores = []
 
 
         # Loop through three times, once for each homology group
-        for hom_group_1, hom_group_2, i in zip(comp1, comp2, range(len(comp1))):
+        for hom_group_1, hom_group_2, i in zip(comp1.inf_pers, \
+                                            comp2, \
+                                            range(len(comp1.inf_pers))):
+
+            score = self.py_min_flow_dist(hom_group_1, hom_group_2)
             if self.verbose:
-                print(f"\nHomology Group {i}")
-            scores.append(self._flow_dist(hom_group_1, hom_group_2))
+                print(f"\nHomology Group {i} has score {score}")
+            scores.append(score)
 
         return scores
+
+    def py_min_flow_dist(self, diag_1, diag_2, verbose=False):
+
+        start_nodes, end_nodes, labels, capacities, costs, supplies \
+            = self.py_generate_parameters(diag_1, diag_2)
+
+        num_first = len(set(start_nodes))
+
+        G = nx.DiGraph()
+
+        source = OrderedDict()
+        sink = OrderedDict()
+
+        for i, node in enumerate(start_nodes):
+            source[node] = 0
+            sink[end_nodes[i]] = 0
+
+        for i, node in enumerate(source.keys()):
+            G.add_node(node, demand=-supplies[i])
+
+        for i, node in enumerate(sink.keys()):
+            G.add_node(node, demand=-supplies[i + num_first])
+
+        for i, start_node in enumerate(start_nodes):
+            G.add_edge(start_node, end_nodes[i], weight = costs[i], capacity=capacities[i])
+
+        min_flow = nx.min_cost_flow_cost(G) / self.FP_MULTIPLIER
+
+        return min_flow
+
+    def py_generate_parameters(self, sink, source):
+        start_nodes = []
+        start_labels = []
+        end_nodes = []
+        end_labels = []
+
+        capacities = []
+        costs = []
+        supply_tracker = OrderedDict()
+
+        for i, key_value_source in enumerate(source.items()):
+            for j, key_value_sink in enumerate(sink.items()):
+                start_nodes.append(i)
+                start_labels.append(key_value_source[0])
+                end_nodes.append(j + len(source))
+                end_labels.append(key_value_sink[0])
+                capacities.append(min(key_value_source[1], key_value_sink[1]))
+                costs.append(self._euclidean(key_value_source[0], key_value_sink[0]))
+
+        for lab in start_labels:
+            supply_tracker[str(lab) + "_source"] = source[lab]
+
+        for lab in end_labels:
+            supply_tracker[str(lab) + "_sink"] = -sink[lab]
+
+        labels = list(supply_tracker.keys())
+        supplies = list(supply_tracker.values())
+
+        # Goldberg Tarjan only takes integer values, so we multiply our floats
+        # by self.FP_MULTIPLIER and cast to int
+        capacities = [int(x * self.FP_MULTIPLIER) for x in capacities]
+        supplies = [int(x * self.FP_MULTIPLIER) for x in supplies]
+
+        # Due to rounding errors, the two supplies may no longer be equal to one
+        # another. We add the difference to the largest value in the smaller set
+        # to allow this to process and keep the error minimised
+        source_tot = sum([x for x in supplies if x > 0])
+        sink_tot = -sum([x for x in supplies if x < 0])
+
+        while sink_tot < source_tot:
+            supplies[supplies.index(min(supplies))] -= 1
+            sink_tot = -sum([x for x in supplies if x < 0])
+
+        while source_tot < sink_tot:
+            supplies[supplies.index(max(supplies))] += 1
+            source_tot = sum([x for x in supplies if x > 0])
+
+        while sum(capacities) < source_tot or sum(capacities) < sink_tot:
+            capacities[capacities.index(max(capacities))] += 1
+
+        return start_nodes, end_nodes, labels, capacities, costs, supplies
 
     def _flow_dist(self, hom_group_1, hom_group_2):
         """
@@ -265,6 +346,9 @@ class PersistenceNorm():
         supplies = list(supply_tracker.values())
 
         return start_nodes, end_nodes, labels, capacities, costs, supplies
+
+    def _euclidean(self, point_1, point_2):
+        return np.sqrt((point_1[0] - point_2[0])**2 + (point_1[1] - point_2[1])**2)
 
 if __name__ == "__main__":
     main()

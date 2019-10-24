@@ -36,11 +36,13 @@ class PersistenceLimits():
     Params
     exp_3, exp_5: Counters for two expansions of a supercell
     """
-    def __init__(self, exp_3, exp_5):
+    def __init__(self, exp_5, exp_7, exp_9):
         self.function_limit = 1000
 
-        self.exp_3 = exp_3
         self.exp_5 = exp_5
+        self.exp_7 = exp_7
+        self.exp_9 = exp_9
+
         exp_inf = self.gen_inf_freq()
         self.exp_inf = self.remove_error(exp_inf)
 
@@ -81,11 +83,13 @@ class PersistenceLimits():
         parameter array.
         '''
         exp_inf = Counter()
-        xs = np.array([3, 5])
+        xs = np.array([5, 7, 9])
 
-        for point, frequency in self.exp_3.items():
+        for point, frequency in self.exp_5.items():
             ys = [frequency]
-            ys.append(self.exp_5[point])
+            ys.append(self.exp_7[point])
+            ys.append(self.exp_9[point])
+
             limit = self.find_limit(xs, ys)
             exp_inf[point] = limit
 
