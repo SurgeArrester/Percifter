@@ -109,7 +109,7 @@ class PersistenceLimits():
         elif ys[0] > ys[1]:
             func = self._recip_func
 
-        elif ys[0] == [ys[1]]:
+        elif ys[0] == ys[1]:
             func = self._const_func
 
         return func

@@ -24,6 +24,12 @@ by writing to the given filepath
 Parameters
 cif_path : Path to search for cif file
 output_path : Path to write final persistence diagram to
+
+TODO
+Replace diffpy with something more stable, appears to be returning incorrect
+x, y, z coordinates.
+
+
 '''
 import os
 import time
@@ -52,18 +58,27 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def main():
-    input_path = '/media/cameron/DATADRIVE1/Datasets/ICSD_2019_Li_CIFs/icsd_164088.cif'
-    test_path = '/home/cameron/Dropbox/University/PhD/Percifter/Percifter/cifs/icsd_000003_cations.cif'
-    out_path = '/home/cameron/Documents/tmp/norm_dist/'
+    input_path = '/home/cameron/Dropbox/University/SecondYear/Percifter/tests/GeorgTest/cif/'
+    output_path = '/home/cameron/Dropbox/University/SecondYear/Percifter/tests/GeorgTest/pers/'
 
-    x = CifToPers(input_path, out_path + "icsd_000003.pers")
-    print(f"x is processed")
-    y = CifToPers(test_path, out_path + "icsd_000003_cations.pers")
-    print(f"y is processed")
+    # for file in os.listdir(output_path):
+    #     if file[-4:] == "pers":
+    #         pd = pk.load(open(output_path + file, "rb"))
+    #         print(file)
+    #         print(pd)
+    #         print()
+    
+    for cif in os.listdir(input_path):
+        x = CifToPers(input_path + cif, output_path + cif[:-4] + ".pers")
 
-    scores = x.flow_dist(y)
-    print("The minimal flow score between each homology group is:")
-    print(f"H0: {scores[0]}\nH1: {scores[1]}\nH2: {scores[2]}")
+    # x = CifToPers(input_path, out_path + "icsd_000003.pers")
+    # print(f"x is processed")
+    # y = CifToPers(test_path, out_path + "icsd_000003_cations.pers")
+    # print(f"y is processed")
+
+    # scores = x.flow_dist(y)
+    # print("The minimal flow score between each homology group is:")
+    # print(f"H0: {scores[0]}\nH1: {scores[1]}\nH2: {scores[2]}")
 
 class CifToPers():
     def __init__(self, input_path=None,
@@ -108,29 +123,33 @@ class CifToPers():
         self.unit_pers = self.generate_persistence(self.xyz_coords)
 
         # generate normalised persistence diagrams for three and five cells
-        # fivecell_vectors, fivecell_coords = self.generate_supercell([5, 5, 5])
-        # exp_5 = self.generate_persistence(fivecell_coords)
-        # self.exp_5 = self.normalise_coords(exp_5)
+        threecell_vectors, threecell_coords = self.generate_supercell([3, 3, 3])
+        exp_3 = self.generate_persistence(threecell_coords)
+        self.exp_3 = self.normalise_coords(exp_3)
 
-        # print("five")
-        # sevencell_vectors, sevencell_coords = self.generate_supercell([7, 7, 7])
-        # exp_7 = self.generate_persistence(sevencell_coords)
-        # self.exp_7 = self.normalise_coords(exp_7)
+        fivecell_vectors, fivecell_coords = self.generate_supercell([5, 5, 5])
+        exp_5 = self.generate_persistence(fivecell_coords)
+        self.exp_5 = self.normalise_coords(exp_5)
 
-        # print("seven")
+        print("five")
+        sevencell_vectors, sevencell_coords = self.generate_supercell([7, 7, 7])
+        exp_7 = self.generate_persistence(sevencell_coords)
+        self.exp_7 = self.normalise_coords(exp_7)
+
+        print("seven")
         # ninecell_vectors, ninecell_coords = self.generate_supercell([9, 9, 9])
         # exp_9 = self.generate_persistence(ninecell_coords)
         # self.exp_9 = self.normalise_coords(exp_9)
 
-        # pk.dump([self.exp_5, self.exp_7, self.exp_9], open(f"{input_path}_tmp.pk", "wb"))
+        pk.dump([self.exp_3, self.exp_5, self.exp_7], open(f"{output_path}_357_pd.pk", "wb"))
 
-        self.exp_5, self.exp_7, self.exp_9 = pk.load( open( f"{input_path}_tmp.pk", "rb" ) )
+        # self.exp_5, self.exp_7, self.exp_9 = pk.load( open( f"{input_path}_tmp.pk", "rb" ) )
 
-        print("nine")
+        # print("nine")
         exp_inf_pers = [None] * len(self.exp_5)
 
         for i, _ in enumerate(self.exp_5):
-            exp_inf_pers[i] = PersistenceLimits(self.exp_5[i], self.exp_7[i], self.exp_9[i]).exp_inf
+            exp_inf_pers[i] = PersistenceLimits(self.exp_3[i], self.exp_5[i], self.exp_7[i]).exp_inf
 
             print(f"{i} limit calc")
         self.remove_zero_freq(exp_inf_pers)
